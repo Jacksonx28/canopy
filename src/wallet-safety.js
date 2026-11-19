@@ -1,0 +1,4 @@
+export const TEST_CHAINS=Object.freeze([46630,421614,11155111]);
+export function safeWalletIcon(icon){return typeof icon==='string'&&icon.length<=150000&&/^data:image\/(?:png|jpeg|webp|svg\+xml)(?:;base64)?,/i.test(icon)?icon:''}
+export function cleanWalletInfo(info={}){return {name:typeof info.name==='string'?info.name.replace(/[\u0000-\u001f\u007f]/g,'').slice(0,64):'Browser wallet',icon:safeWalletIcon(info.icon),rdns:typeof info.rdns==='string'&&/^[a-z0-9.-]{1,128}$/i.test(info.rdns)?info.rdns:''}}
+export function assertWalletContext(chain,accounts,expectedChain,expectedAccount){if(!TEST_CHAINS.includes(expectedChain)||Number(chain)!==expectedChain)throw Error('Network changed or unsupported. Review again.');if(!Array.isArray(accounts)||!/^0x[0-9a-f]{40}$/i.test(accounts[0]||'')||accounts[0].toLowerCase()!==expectedAccount?.toLowerCase())throw Error('Wallet account changed. Review again.');}

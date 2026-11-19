@@ -6,3 +6,5 @@ const out=JSON.parse(solc.compile(JSON.stringify(input)));if(out.errors?.some(x=
 const c=out.contracts['Pool.sol'].CanopyTestPool;
 fs.writeFileSync('dist/data/pool.json',JSON.stringify({abi:c.abi,bytecode:'0x'+c.evm.bytecode.object,runtime:'0x'+c.evm.deployedBytecode.object}));
 await build({entryPoints:['src/testnet.js'],outfile:'dist/testnet.js',bundle:true,minify:true,format:'esm',target:'es2022'});
+
+await build({entryPoints:['src/welcome.js'],outfile:'dist/welcome.js',bundle:true,minify:true,format:'esm',target:'es2022'});

@@ -43,3 +43,11 @@ Favicon and loading motion use the Canopy leaf. Navigation collapses to five mob
 Wallet icons use bounded image data URIs and are rendered only as img elements, never inserted as SVG markup. Announced names and icons are self-reported by extensions and are not identity verification. Connection requests public accounts only; transactions still require wallet confirmation. Switching or disconnecting cleans provider listeners; account and chain context is revalidated before signing. No private keys, seed phrases, or token approval signatures are requested by the app.
 
 TradingView runs in a sandboxed, cross-origin iframe on its own domain. No TradingView script executes in the host page, isolating it from the host wallet provider and local state. Mainnet signing remains disabled. Automated checks cover malformed icon input and changed wallet context; this is not an independent security audit.
+
+## Welcome and account access
+
+The welcome screen includes sign-in/sign-up, a falling-leaf loader, light/dark mode, and guest exploration. Account access uses the bundled official Supabase client: email magic links, Google OAuth with PKCE, and Ethereum wallet-message verification. Connecting a wallet for transactions remains separate from signing into an account. Existing sample balances are browser-local and are not synced to an account.
+
+Set `dist/auth-config.json` to your Supabase project URL and **public publishable key** (or legacy anon key). Never use a service-role or secret key. An empty configuration keeps account access unavailable, with guest access working. Enable Email, Google, and Web3/Ethereum in Supabase Auth. Allow `https://jacksonx28.github.io/canopy/dist/` as a redirect URL; set the Site URL to that same URL. Configure Google credentials in Supabase, not in this repository. Email links must be opened in the browser that requested them for PKCE. Configure production email delivery before launch.
+
+Run `npm run build` after modifying `src/welcome.js`. The welcome stylesheet and markup are in `dist/welcome.css` and `dist/index.html`. Supabase details are still required to verify live account creation, Google redirects, and signed wallet sessions.

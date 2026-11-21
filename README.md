@@ -25,7 +25,7 @@ Supported networks: RH testnet 46630, Arbitrum Sepolia 421614, Ethereum Sepolia 
 3. Buy or sell CAN; swaps charge 0.3% and use 0.5% slippage and a ten-minute deadline. CAN has no value. Seed liquidity cannot be withdrawn. This is a test harness, not production DEX integration or a general ERC20 implementation.
 4. To bridge, use an ordinary EOA on Ethereum Sepolia with test ETH. Select RH testnet or Arbitrum Sepolia and deposit through the verified canonical inbox. Smart/delegated wallets are rejected because depositEth aliases contract callers. L1 confirmation is NOT L2 arrival. Direct L2-to-L2 routing is not implemented; the official bridge link covers other routes.
 
-The agent has tested contracts locally and disconnected-wallet UI, not a user-signed Rabby transaction on public testnet. Staking and original trade pages remain simulations. Contract and transaction references are shown in the wallet review and explorer links.
+The agent has tested contracts locally and disconnected-wallet UI, not a user-signed Rabby transaction on public testnet. Staking remains a simulation. Swap and Bridge open the wallet-backed testnet flow by default; an explicit Simulation preview tab preserves the demo. Contract and transaction references are shown in the wallet review and explorer links.
 
 ## Sources
 
@@ -51,3 +51,11 @@ The welcome screen includes sign-in/sign-up, a falling-leaf loader, light/dark m
 Set `dist/auth-config.json` to your Supabase project URL and **public publishable key** (or legacy anon key). Never use a service-role or secret key. An empty configuration keeps account access unavailable, with guest access working. Enable Email, Google, and Web3/Ethereum in Supabase Auth. Allow `https://jacksonx28.github.io/canopy/dist/` as a redirect URL; set the Site URL to that same URL. Configure Google credentials in Supabase, not in this repository. Email links must be opened in the browser that requested them for PKCE. Configure production email delivery before launch.
 
 Run `npm run build` after modifying `src/welcome.js`. The welcome stylesheet and markup are in `dist/welcome.css` and `dist/index.html`. Supabase details are still required to verify live account creation, Google redirects, and signed wallet sessions.
+
+## Testnet transaction checks
+
+Swap and Bridge open real testnet forms by default. Bridge requests connection or switches the wallet to Ethereum Sepolia before review. The destination and amount survive network changes. Preflight validates the EOA recipient rules, canonical inbox code, wallet context, source balance, and estimated gas; the same checks run again before sending. Smart/delegated wallets remain blocked for this native deposit method to avoid address aliasing. Pool addresses are saved only after successful deployment confirmation.
+
+Verification on 2026-11-21: all three public RPCs responded with the expected chain IDs; both canonical L1 inboxes had deployed code; read-only eth_call simulations of a 0.001 ETH deposit succeeded for RH and Arbitrum using a synthetic sender balance override. These checks do not prove wallet signing or L2 delivery. Public-testnet end-to-end testing still requires a funded wallet and user approval. Automated tests cover swap protections, allowed networks, invalid amounts, bridge gas affordability, and smart-account aliasing protection.
+
+To try bridging: open Bridge, connect Rabby, switch to Ethereum Sepolia, choose RH testnet or Arbitrum Sepolia, and fund the wallet with Sepolia ETH for the amount plus gas. Review and approve in Rabby. L1 confirmation is reported separately from unverified L2 arrival. Direct L2-to-L2 and L2 withdrawals are not implemented here.

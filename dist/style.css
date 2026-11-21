@@ -30,3 +30,21 @@ button,a{-webkit-touch-callout:none}button:active,a:active{transform:translateY(
 @media(prefers-reduced-motion:reduce){.leaf-drift{top:34px;left:58px;animation:none}.falling-leaf,.leaf-shadow{animation:none}.leaf-shadow{opacity:.13}#transaction-indicator{transition:none}}
 .isolated-chart{width:100%;height:100%;border:0;display:block;background:transparent}
 #transaction-indicator[data-outcome=error]>.ui-icon{color:var(--red)}
+
+.transaction-mode{display:flex;gap:6px;padding:5px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;width:fit-content;max-width:100%;margin-bottom:26px}.transaction-mode button{padding:12px 16px;border-radius:8px;background:transparent;font-size:13px;color:var(--muted)}.transaction-mode button[aria-pressed=true]{background:var(--panel);color:var(--text);box-shadow:var(--shadow)}.testnet-grid[data-testnet-view=bridge] #tn-swap-panel,.testnet-grid[data-testnet-view=swap] #tn-bridge-panel{display:none}.testnet-grid[data-testnet-view=bridge],.testnet-grid[data-testnet-view=swap]{grid-template-columns:minmax(0,680px);justify-content:center}.tn-card .fixed-network{display:flex;align-items:center;gap:10px}.tn-status{padding:12px 16px;background:var(--panel2);border-radius:10px}.tn-card small{line-height:1.6}.tn-card .form-note{margin:14px 0;font-size:13px}.testnet-bar small{display:block;margin-top:8px}@media(max-width:640px){.transaction-mode{width:100%;}.transaction-mode button{flex:1;padding:10px;font-size:12px}.testnet-grid{min-width:0}.testnet-bar>*{min-width:0}.testnet-bar select{max-width:100%}}
+/* iPhone: one bounded vertical scroller, never a pannable document canvas. */
+@media(max-width:720px){
+ html{height:100%;overflow:hidden!important;overscroll-behavior:none}
+ body{position:fixed;inset:0;width:100%;height:100%;max-width:100%;overflow:hidden!important;overscroll-behavior:none}
+ .shell{position:relative;margin-left:0;width:100%;max-width:100%;height:100vh;height:100dvh;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;-webkit-overflow-scrolling:touch;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+ main{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+ main>*,.page-grid>*,.overview-layout>*,.testnet-grid>*,.market-layout>*{min-width:0;max-width:100%}
+ input,select,textarea,.testnet-bar select,.tn-card .modal-input,.network-select,.search input{font-size:16px!important}
+ .discovery-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-right:0;padding:0;overflow:visible}
+ .discovery-tile{min-width:0;width:100%;max-width:100%;flex:initial}
+ .tile-info{gap:4px;flex-wrap:wrap}.tile-info strong{min-width:0;overflow-wrap:anywhere}
+ .rh-table-wrap,.market-sidebar{max-width:100%;overscroll-behavior-x:contain}
+ iframe{max-width:100%}
+ .welcome-screen{width:100%;max-width:100%;height:100vh;height:100dvh;overflow-x:hidden;overscroll-behavior:none}
+}
+html:not(.welcome-open) #main{visibility:visible}

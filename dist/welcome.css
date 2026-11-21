@@ -3,3 +3,27 @@
 @media(min-width:1500px){.welcome-layout{gap:150px}.welcome-story h1{font-size:102px}}@media(max-width:900px){.welcome-layout{gap:35px}.welcome-story h1{font-size:65px;letter-spacing:-4px}.welcome-story h1 em{letter-spacing:-3px}.welcome-art{right:-25px;opacity:.6}.welcome-card{padding:24px}.welcome-products{font-size:11px;word-spacing:0}.welcome-intro{font-size:15px}}@media(max-width:640px){.welcome-screen{padding:20px 22px 28px}.welcome-layout{display:flex;flex-direction:column;align-items:stretch;gap:25px;padding:35px 0 26px;min-height:auto}.welcome-story{padding:0}.welcome-story h1{font-size:58px;line-height:1.02;margin:14px 0 18px;letter-spacing:-3px}.welcome-story h1 br:first-child{display:none}.welcome-story h1 br:first-child:after{content:' '}.welcome-story h1 em{letter-spacing:-3px}.welcome-eyebrow{font-size:10px}.welcome-intro{font-size:14px}.welcome-intro br{display:none}.welcome-products{display:none}.welcome-art{width:150px;height:170px;right:0;bottom:4px;opacity:.45}.hero-leaf{width:75px;right:0;top:0}.canopy-orbit{width:180px;height:60px;left:0}.hero-shadow{right:8px;bottom:22px;width:35px}.welcome-card{max-width:none;padding:22px;border-radius:20px}.auth-tabs{margin-bottom:25px}.welcome-card h2{font-size:29px}.welcome-brand{font-size:27px}.welcome-brand svg{width:27px;height:27px}.welcome-bottom{font-size:11px}.welcome-bottom span:last-child{display:none}.auth-kicker{display:none}.welcome-card #auth-subtitle{margin-bottom:20px}}@media(prefers-reduced-motion:reduce){.entry-leaf,.entry-leaf svg,.entry-leaf-shadow,.hero-leaf{animation:none!important}.entry-leaf{transform:translateY(45px)}.entry-loader{transition:none}}
 .welcome-screen [hidden]{display:none!important}
 @media(min-width:641px) and (max-height:800px){.welcome-layout{padding:28px 0}.welcome-card{padding:22px 30px}.auth-tabs{margin-bottom:20px}.welcome-card #auth-subtitle{margin-bottom:18px}.guest-entry{margin-top:16px;padding-top:12px}.welcome-story h1{font-size:74px}.auth-divider{height:36px}}
+
+/* Keep the viewport anchored; only inner tables and lists scroll sideways. */
+html,body{width:100%;max-width:100%;overflow-x:hidden;overflow-x:clip}
+.welcome-open body{position:fixed;inset:0;width:100%;overflow:hidden}
+.welcome-screen{overflow-x:hidden;overflow-y:auto;overscroll-behavior:none}
+.welcome-layout,.welcome-story,.welcome-card,.shell,main{min-width:0}
+@media(max-width:640px){
+  .welcome-screen{padding:20px max(18px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));touch-action:pan-y pinch-zoom}
+  .welcome-top{width:100%;max-width:420px}
+  .welcome-layout{width:100%;max-width:420px;margin-inline:auto;padding:28px 0 24px;gap:24px;align-items:center}
+  .welcome-story{width:100%;text-align:center}
+  .welcome-story h1{font-size:clamp(42px,12vw,56px);line-height:1.04;letter-spacing:-2.5px;margin:14px 0 16px}
+  .welcome-story h1 em{letter-spacing:-2.5px}
+  .welcome-intro{max-width:30ch;margin-inline:auto;line-height:1.65}
+  .welcome-art{display:none}
+  .welcome-card{width:100%;max-width:420px;margin-inline:auto;padding:22px clamp(16px,5vw,24px);justify-self:center}
+  .welcome-card h2,.welcome-card #auth-subtitle{text-align:center}
+  .auth-tabs,.auth-provider,#auth-form,#auth-email,.auth-submit{min-width:0;max-width:100%}
+  .auth-provider{white-space:normal}
+  .welcome-bottom{justify-content:center;text-align:center}
+  .entry-loader{overflow:hidden;overscroll-behavior:none}
+}
+
+@media(max-width:640px){.welcome-screen{scrollbar-width:none}.welcome-screen::-webkit-scrollbar{display:none}}

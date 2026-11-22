@@ -5,11 +5,15 @@ import { runInNewContext } from 'node:vm';
 
 const app = readFileSync(new URL('../dist/app.js', import.meta.url), 'utf8');
 
-function openSwap(hash = '#swap', balanceOverrides = {}, activity = []) {
+function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options = {}) {
   const location = { hash };
   const nodes = new Map();
   const balances = { ZRO: 1000, USDT0: 150, PYUSD: 125, weETH: 2, ...balanceOverrides };
-  const storage = new Map([['canopy-zero-state', JSON.stringify({ balances, staked: 0, rewards: 0, activity })]]);
+  const storage = options.storage ?? new Map([['canopy-zero-state', JSON.stringify({ balances, staked: 0, rewards: 0, activity })]]);
+  const timers = new Map();
+  let now = options.now ?? 100_000;
+  let timerId = 0;
+  const listeners = {};
   const chartPanel = { open: true, dataset: {}, isConnected: true };
   const embeds = [];
   const navigatingBridge = hash === '#bridge' || hash === '#swap/bridge';
@@ -25,6 +29,8 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = []) {
           const previous = this.listeners[type];
           this.listeners[type] = previous ? (...args) => { previous(...args); callback(...args); } : callback;
         },
+        dispatchEvent(event) { this.listeners[event.type]?.(event); },
+        querySelector: element,
         classList: { add() {}, remove() {} },
         before() {},
         showModal() { this.open = true; },
@@ -61,7 +67,7 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = []) {
         append(frame) { embeds.push({ frame, markup }); }
       }];
     },
-    addEventListener() {},
+    addEventListener(type, handler) { (listeners[type] ??= []).push(handler); },
     createElement: () => element('created')
   };
   const window = { addEventListener() {} };
@@ -82,10 +88,28 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = []) {
       getItem: key => storage.get(key),
       setItem: (key, value) => storage.set(key, value)
     },
-    setTimeout: callback => callback()
+    Date: class extends Date {
+      constructor(...args) { super(...(args.length ? args : [now])); }
+      static now() { return now; }
+    },
+    Event,
+    setTimeout(callback, delay) { timers.set(++timerId, { callback, due: now + delay }); return timerId; },
+    clearTimeout(id) { timers.delete(id); }
   };
   runInNewContext(app, sandbox);
-  return { element, storage, embeds, location, balances, openStake: () => sandbox.stakeModal('ZRO') };
+  const advance = milliseconds => {
+    now += milliseconds;
+    for (const [id, timer] of [...timers]) {
+      if (timer.due > now || !timers.delete(id)) continue;
+      timer.callback();
+    }
+  };
+  const setHidden = value => {
+    document.hidden = value;
+    listeners.visibilitychange?.forEach(handler => handler());
+  };
+  return { element, storage, embeds, location, balances, advance, setHidden,
+    now: () => now, openStake: () => sandbox.stakeModal('ZRO'), showActivity: index => sandbox.openActivityDetails(index) };
 }
 
 test('swap offers Zero ecosystem examples and updates the selected pair and logos', () => {
@@ -121,15 +145,33 @@ test('a pair selected while the chart is collapsed has its own labeled chart sta
   assert.equal(embeds.length, 0);
 });
 
-test('a confirmed swap records a simulation and updates the local demo balances', async () => {
-  const { element, storage, balances } = openSwap();
+test('a pending swap restores its countdown after reopening and credits the demo receipt only once', () => {
+  const { element, storage, balances, now } = openSwap();
   element('#review-trade').onclick();
   assert.match(element('#modal-content').innerHTML, /Simulation only/);
-  await element('#confirm').onclick();
-  const state = JSON.parse(storage.get('canopy-zero-state'));
-  assert.equal(state.balances.ZRO, balances.ZRO - 1);
-  assert.ok(state.balances.USDT0 > balances.USDT0);
-  assert.equal(state.activity[0].type, 'Swap');
+  element('#confirm').onclick();
+  let record = JSON.parse(storage.get('canopy-zero-state'));
+  assert.equal(record.balances.ZRO, balances.ZRO - 1);
+  assert.equal(record.balances.USDT0, balances.USDT0);
+  assert.equal(record.activity[0].type, 'Swap');
+  assert.match(element('#modal-content').innerHTML, /0:08/);
+  assert.match(element('#main').innerHTML, /data-activity-index="0"/);
+
+  const reopened = openSwap('#activity', {}, [], { storage, now: now() + 3000 });
+  reopened.showActivity(0);
+  assert.match(reopened.element('#modal-content').innerHTML, /0:05/);
+  reopened.setHidden(true);
+  reopened.advance(6000);
+  assert.equal(JSON.parse(storage.get('canopy-zero-state')).balances.USDT0, balances.USDT0);
+  reopened.setHidden(false);
+  record = JSON.parse(storage.get('canopy-zero-state'));
+  assert.ok(record.balances.USDT0 > balances.USDT0);
+  assert.equal(record.activity[0].receipt.settled, true);
+  const settledBalance = record.balances.USDT0;
+  const settled = openSwap('#activity', {}, [], { storage, now: reopened.now() + 1000 });
+  settled.showActivity(0);
+  assert.match(settled.element('#modal-content').innerHTML, /data-status-label role="status">Complete/);
+  assert.equal(JSON.parse(storage.get('canopy-zero-state')).balances.USDT0, settledBalance);
 });
 
 test('the submitted #testnet deep link opens demo swap and keeps its URL fragment', () => {
@@ -140,9 +182,9 @@ test('the submitted #testnet deep link opens demo swap and keeps its URL fragmen
   assert.match(element('#swap-pair').innerHTML, /ZRO \/ USDT0/);
 });
 
-test('Bridge is a ZRO-only tab in the Swap workspace, including on the old Bridge link', async () => {
+test('Bridge is a ZRO-only tab in the Swap workspace and tracks source and destination demo stages', () => {
   for (const hash of ['#swap/bridge', '#bridge']) {
-    const { element, storage, balances } = openSwap(hash);
+    const { element, storage, balances, advance, showActivity } = openSwap(hash);
     assert.equal(element('#breadcrumb').textContent, 'Swap');
     assert.doesNotMatch(element('#nav').innerHTML, />Bridge</);
     assert.match(element('#main').innerHTML, /href="#swap\/bridge" class="active" aria-current="page">Bridge/);
@@ -154,13 +196,23 @@ test('Bridge is a ZRO-only tab in the Swap workspace, including on the old Bridg
     assert.equal(element('#route-to').textContent, 'Ethereum');
     element('#review-trade').onclick();
     assert.match(element('#modal-content').innerHTML, /Simulation only/);
-    await element('#confirm').onclick();
+    element('#confirm').onclick();
     const state = JSON.parse(storage.get('canopy-zero-state'));
     assert.equal(state.balances.ZRO, balances.ZRO);
     assert.equal(state.activity[0].type, 'Bridge');
     assert.deepEqual(state.activity[0].symbols, ['ZRO']);
     assert.match(element('#main').innerHTML, /activity-asset-icons[^>]*><img data-token="ZRO"/);
     assert.match(state.activity[0].detail, /Zero \(demo\) to Ethereum/);
+    assert.match(element('#modal-content').innerHTML, /Source pending/);
+    assert.match(element('#modal-content').innerHTML, /0:20/);
+    advance(5000);
+    showActivity(0);
+    assert.match(element('#modal-content').innerHTML, /In transit/);
+    assert.match(element('#modal-content').innerHTML, /0:15/);
+    advance(15000);
+    showActivity(0);
+    assert.match(element('#modal-content').innerHTML, /data-status-label role="status">Complete/);
+    assert.equal(JSON.parse(storage.get('canopy-zero-state')).balances.ZRO, balances.ZRO);
   }
 });
 

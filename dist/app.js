@@ -21,7 +21,7 @@ const state={
   rewards:nonnegative(stored?.version===2 ? stored.rewards : null,12),
   activity:Array.isArray(stored?.activity)?stored.activity:[],
 };
-let page='portfolio',range='1W',market='stocks',holdTab='assets',miniTab='stocks';
+let page='portfolio',range='1W',market='stocks',holdTab='assets',miniTab='watchlist';
 const persist=()=>localStorage.setItem(demoStateKey,JSON.stringify(state));
 const icons={portfolio:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',markets:'<path d="M4 19V12m8 7V5m8 14V9"/>',swap:'<path d="M4 7h16l-4-4M20 17H4l4 4"/>',stake:'<path d="M12 3v18M3 12h18M5.5 5.5l13 13m0-13-13 13"/>',activity:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>'};
 icons.perps='<path d="M3 17l5-5 4 3 8-9M15 6h5v5"/>';
@@ -44,7 +44,20 @@ const chg=a=>a.change==null?'<span class="muted">Exchange chart</span>':`<span c
 function spark(seed=0,negative=false){let values=Array.from({length:26},(_,i)=>32-i*.65+Math.sin(i*1.9+seed)*6+Math.cos(i*.7+seed)*4);if(negative)values=values.map(v=>40-v);return `<svg class="sparkline" viewBox="0 0 100 45" preserveAspectRatio="none" aria-hidden="true"><path d="${values.map((v,i)=>(i?'L':'M')+(i*4)+','+v).join(' ')}" fill="none" stroke="${negative?'#f39a92':'var(--lime)'}" stroke-width="1.5"/></svg>`}
 function chart(seed=0){const values=Array.from({length:100},(_,i)=>159-i*1.1+Math.sin(i*.27+seed)*13+Math.sin(i*1.7)*5+Math.cos(i*.7)*7);const path=values.map((v,i)=>(i?'L':'M')+(i*7.4).toFixed(1)+','+v.toFixed(1)).join(' ');return `<svg viewBox="0 0 740 210" preserveAspectRatio="none" role="img" aria-label="Illustrative portfolio performance trending upward"><defs><linearGradient id="fill${seed}" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#c5f879" stop-opacity=".15"/><stop offset="1" stop-color="#c5f879" stop-opacity="0"/></linearGradient></defs>${[45,95,145,195].map(y=>`<line x1="0" x2="740" y1="${y}" y2="${y}" stroke="#ffffff08" stroke-dasharray="3 5"/>`).join('')}<path d="${path} L733 210 L0 210 Z" fill="url(#fill${seed})"/><path d="${path}" stroke="var(--lime)" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/><circle cx="732.6" cy="${values[99]}" r="4" fill="var(--lime)" stroke="#24321b" stroke-width="5"/></svg>`}
 function heading(title,sub,actions=''){return `<div class="page-heading"><div><h1>${title}</h1><p class="subtitle">${sub}</p></div><div class="buttons">${actions}</div></div>`}
-let watchlist;try{watchlist=JSON.parse(localStorage.getItem('canopy-zero-watchlist'))}catch{}if(!Array.isArray(watchlist))watchlist=['ZRO','USDT0','weETH'];let selectedSymbol='NVDA';
+const watchlistKey='canopy-zero-watchlist';
+let watchlist;
+try { watchlist=JSON.parse(localStorage.getItem(watchlistKey)); } catch {}
+watchlist=Array.isArray(watchlist) ? [...new Set(watchlist)].filter(symbol=>assets.some(asset=>asset.symbol===symbol)) : ['ZRO','USDT0','weETH'];
+let selectedSymbol='NVDA';
+const pinnedAssets=()=>watchlist.map(symbol=>assets.find(asset=>asset.symbol===symbol));
+const starPath='<path d="M11.16 4.2a.93.93 0 0 1 1.68 0l2.06 4.17 4.6.67a.93.93 0 0 1 .52 1.59l-3.33 3.25.79 4.59a.93.93 0 0 1-1.36.98L12 17.28l-4.12 2.17a.93.93 0 0 1-1.36-.98l.79-4.59-3.33-3.25A.93.93 0 0 1 4.5 9.04l4.6-.67 2.06-4.17Z"/>';
+function pinContents(pinned, labelled){
+  return CanopyUI.graphic(starPath,'watchlist-star')+(labelled?`<span>${pinned?'Remove from watchlist':'Add to watchlist'}</span>`:'');
+}
+function watchToggle(asset,labelled=false){
+  const active=watchlist.includes(asset.symbol);
+  return `<button type="button" class="${labelled?'secondary watch-action':'pin'}" data-pin="${asset.symbol}" aria-label="Watch ${asset.name}" aria-pressed="${active}" title="${active?'Remove from':'Add to'} watchlist">${pinContents(active,labelled)}</button>`;
+}
 const tvSymbols={ZRO:'COINBASE:ZROUSD',BTC:'COINBASE:BTCUSD',ETH:'COINBASE:ETHUSD',SOL:'COINBASE:SOLUSD',USDC:'COINBASE:USDCUSD',NVDA:'NASDAQ:NVDA',TSLA:'NASDAQ:TSLA',AAPL:'NASDAQ:AAPL',DOGE:'BINANCE:DOGEUSDT',PEPE:'BINANCE:PEPEUSDT',WIF:'BINANCE:WIFUSDT',BONK:'BINANCE:BONKUSDT'};
 Object.assign(tvSymbols,{"XRP": "BINANCE:XRPUSDT", "ADA": "BINANCE:ADAUSDT", "AVAX": "BINANCE:AVAXUSDT", "LINK": "BINANCE:LINKUSDT", "DOT": "BINANCE:DOTUSDT", "LTC": "BINANCE:LTCUSDT", "BCH": "BINANCE:BCHUSDT", "UNI": "BINANCE:UNIUSDT", "AAVE": "BINANCE:AAVEUSDT", "NEAR": "BINANCE:NEARUSDT", "SUI": "BINANCE:SUIUSDT", "ARB": "BINANCE:ARBUSDT", "OP": "BINANCE:OPUSDT", "MSFT": "NASDAQ:MSFT", "AMZN": "NASDAQ:AMZN", "GOOGL": "NASDAQ:GOOGL", "META": "NASDAQ:META", "NFLX": "NASDAQ:NFLX", "AMD": "NASDAQ:AMD", "INTC": "NASDAQ:INTC", "COIN": "NASDAQ:COIN", "PLTR": "NASDAQ:PLTR", "MSTR": "NASDAQ:MSTR", "JPM": "NYSE:JPM", "V": "NYSE:V", "DIS": "NYSE:DIS", "WMT": "NASDAQ:WMT", "UBER": "NYSE:UBER", "SPY": "AMEX:SPY"});
 function liveChart(symbol, id, market = tvSymbols[symbol]) {
@@ -105,8 +118,8 @@ function portfolio(){
       <section class="allocation-block"><div class="card-top"><h2>Allocation</h2><span class="tag">${allocation.length} assets</span></div>
         ${allocation.length?`<div class="allocation-bar">${allocation.map(asset=>`<span style="width:${asset.value/total*100}%;background:${asset.color}" title="${asset.symbol}"></span>`).join('')}</div>${allocation.map(asset=>`<div class="allocation-item"><span><i style="background:${asset.color}"></i>${asset.symbol}</span><b>${(asset.value/total*100).toFixed(1)}%</b></div>`).join('')}`:'<p class="form-note">No demo holdings yet.</p>'}
       </section>
-      <section class="watchlist"><div class="card-top"><h2>Watchlist</h2><button class="quiet" data-go="markets">Edit</button></div>
-        ${zeroDemoAssets.filter(asset=>watchlist.includes(asset.symbol)).map(asset=>`<button class="watch-row" data-asset="${asset.symbol}">${coin(asset)}<span>${asset.symbol}<small>${asset.name}</small></span><span class="watch-price">${money(asset.price)}</span></button>`).join('')||'<p class="form-note">Pin demo tokens from Markets to follow them here.</p>'}<span class="data-caption">Sample prices</span>
+      <section class="watchlist"><div class="card-top"><h2>Watchlist</h2><button class="quiet" data-go="markets" data-mini="watchlist">View all</button></div>
+        ${pinnedAssets().slice(0,5).map(asset=>`<button class="watch-row" data-asset="${asset.symbol}">${coin(asset)}<span>${asset.symbol}<small>${asset.name}</small></span><span class="watch-price">${money(asset.price)}</span></button>`).join('')||'<p class="form-note">Star an asset in Markets to follow it here.</p>'}<span class="data-caption">Sample prices</span>
       </section>
     </aside>
   </div>
@@ -117,9 +130,28 @@ function portfolio(){
   </section>`;
 }
 
+const radarTabs=[['watchlist','Watchlist'],['stocks','Stocks'],['memes','Memes']];
+function radarContent(){
+  if(miniTab==='watchlist'){
+    const saved=pinnedAssets();
+    if(!saved.length)return `<div class="radar-empty">${CanopyUI.graphic(starPath,'watchlist-star')}<p>Star an asset in Markets to save it here.</p></div>`;
+    return `<div class="radar-watchlist">${saved.map(asset=>`<article class="radar-watch-card"><button class="radar-watch-asset" data-asset="${asset.symbol}">${assetName(asset)}</button>${watchToggle(asset)}</article>`).join('')}</div>`;
+  }
+  const items=assets.filter(asset=>asset.type===miniTab).slice(0,4);
+  return `<div class="discovery-grid">${items.map((asset,index)=>`<button class="discovery-tile tile-${index}" data-asset="${asset.symbol}"><div class="token-art">${coin(asset)}</div><div class="tile-info"><strong>${asset.name}</strong>${chg(asset)}</div><div class="tile-meta">${asset.symbol}<span>Open market chart</span></div></button>`).join('')}</div>`;
+}
 function marketRadar(){
-  const choices=[['stocks','Stocks'],['memes','Memes']];
-  return `<section class="discovery market-radar" aria-labelledby="radar-title"><div class="card-top"><h2 id="radar-title">On your radar</h2><div class="section-tabs">${choices.map(([type,label])=>`<button class="${miniTab===type?'active':''}" data-mini="${type}" aria-pressed="${miniTab===type}">${label}</button>`).join('')}</div></div><div class="discovery-grid">${assets.filter(asset=>asset.type===miniTab).slice(0,4).map((asset,index)=>`<button class="discovery-tile tile-${index}" data-asset="${asset.symbol}"><div class="token-art">${coin(asset)}</div><div class="tile-info"><strong>${asset.name}</strong>${chg(asset)}</div><div class="tile-meta">${asset.symbol}<span>Open market chart</span></div></button>`).join('')}</div></section>`;
+  return `<section class="discovery market-radar" aria-labelledby="radar-title"><div class="card-top"><h2 id="radar-title">On your radar</h2><div class="section-tabs" role="group" aria-label="Radar view">${radarTabs.map(([type,label])=>`<button class="${miniTab===type?'active':''}" data-mini="${type}" aria-pressed="${miniTab===type}" aria-controls="radar-content">${label}</button>`).join('')}</div></div><div id="radar-content">${radarContent()}</div></section>`;
+}
+function refreshRadar(){
+  const content=$('#radar-content');
+  if(!content)return;
+  for(const tab of document.querySelectorAll('.market-radar [data-mini]')){
+    const active=tab.dataset.mini===miniTab;
+    tab.classList.toggle('active',active);
+    tab.setAttribute('aria-pressed',String(active));
+  }
+  content.innerHTML=radarContent();
 }
 let tradeMode = 'swap';
 const bridgeTokens = ['ZRO'];
@@ -205,7 +237,7 @@ function demoTrade() {
           <div class="field-bottom"><span id="receive-usd"></span><span>${bridge ? 'Same wallet address' : 'Includes demo fee'}</span></div>
         </div>
         <div class="trade-details">
-          <div><span>${bridge ? 'Illustrative arrival' : 'Sample exchange rate'}</span><b id="rate">~2 minutes</b></div>
+          <div><span>${bridge ? 'Demo arrival' : 'Sample exchange rate'}</span><b id="rate">${demoActivityDuration.Bridge/1000} seconds</b></div>
           <div><span>${bridge ? 'Bridge fee' : 'Trading fee'}</span><b>${bridge ? '0.1%' : '0.3%'}</b></div>
           <div><span>Network fee</span><b>Illustrative · $0.08</b></div>
         </div>
@@ -301,13 +333,18 @@ function bridgeNetworkIcon(network) {
   if (network === 'Zero (demo)') return CanopyUI.token('ZRO');
   return CanopyUI.network(network);
 }
-function markets(){return heading('Markets','Price action, watchlists, and what’s moving.',`<span class="tag">Charts powered by TradingView</span>`)+marketRadar()+`<div class="market-controls"><div class="segments">${[['stocks','Stocks'],['crypto','Crypto'],['memes','Trending memes']].map(([v,n])=>`<button class="${market===v?'active':''}" data-market="${v}">${n}</button>`).join('')}</div><input class="search" id="search" aria-label="Search markets" placeholder="Search name or symbol"></div><section class="market-terminal"><div class="market-sidebar"><div class="card-top"><h2>${market==='memes'?'Meme watch':market==='stocks'?'Stock watch':'Crypto watch'}</h2><span class="data-caption">Sample list</span></div><div id="market-rows">${marketRows('')}</div></div><div class="market-chart-panel"><div class="card-top"><h2 id="selected-market">${marketChartTitle(selectedSymbol)}</h2><span class="data-caption">Exchange data · May be delayed</span></div><div id="market-live">${liveChart(selectedSymbol,'markets-chart')}</div></div></section><div class="market-bottom"><span>★ Pin demo tokens to your portfolio watchlist.</span><span>Quotes in this list are samples. Open a chart for exchange data.</span></div>`}
+function markets(){return heading('Markets','Price action, watchlists, and what’s moving.',`<span class="tag">Charts powered by TradingView</span>`)+marketRadar()+`<div class="market-controls"><div class="segments">${[['stocks','Stocks'],['crypto','Crypto'],['memes','Trending memes']].map(([v,n])=>`<button class="${market===v?'active':''}" data-market="${v}">${n}</button>`).join('')}</div><input class="search" id="search" aria-label="Search markets" placeholder="Search name or symbol"></div><section class="market-terminal"><div class="market-sidebar"><div class="card-top"><h2>${market==='memes'?'Meme watch':market==='stocks'?'Stock watch':'Crypto watch'}</h2><span class="data-caption">Sample list</span></div><div id="market-rows">${marketRows('')}</div></div><div class="market-chart-panel"><div class="card-top"><h2 id="selected-market">${marketChartTitle(selectedSymbol)}</h2><span class="data-caption">Exchange data · May be delayed</span></div><div id="market-live">${liveChart(selectedSymbol,'markets-chart')}</div></div></section><div class="market-bottom"><span>Star any asset to save it to On your radar.</span><span>Quotes in this list are samples. Open a chart for exchange data.</span></div>`}
 function marketChartTitle(symbol){
   const asset=assets.find(item=>item.symbol===symbol);
   const quote=tvSymbols[symbol]?.endsWith('USDT')?'USDT':'USD';
   return coin(asset)+(tvSymbols[symbol]&&asset.type!=='stocks'?`${symbol} / ${quote}`:symbol);
 }
-function marketRows(q){let list=assets.filter(a=>a.type===market&&`${a.name} ${a.symbol}`.toLowerCase().includes(q.toLowerCase()));return list.length?list.map(a=>`<div class="market-row ${selectedSymbol===a.symbol?'selected':''}"><button class="pin ${watchlist.includes(a.symbol)?'pinned':''}" data-pin="${a.symbol}" aria-label="${watchlist.includes(a.symbol)?'Unpin':'Pin'} ${a.name}">${watchlist.includes(a.symbol)?'★':'☆'}</button><button class="market-select" data-select-market="${a.symbol}">${assetName(a)}<span>${a.demoLabel?a.demoLabel:money(a.price,a.price<.01?7:2)}<small>${a.demoLabel?(tvSymbols[a.symbol]?'Exchange chart':'No chart data'):chg(a)}</small></span></button></div>`).join(''):'<div class="empty">No matching assets.</div>'}
+function marketRows(query){
+  const search=query.trim().toLowerCase();
+  const rows=assets.filter(asset=>asset.type===market&&`${asset.name} ${asset.symbol}`.toLowerCase().includes(search));
+  if(!rows.length)return '<div class="empty">No matching assets.</div>';
+  return rows.map(asset=>`<div class="market-row ${selectedSymbol===asset.symbol?'selected':''}">${watchToggle(asset)}<button class="market-select" data-select-market="${asset.symbol}">${assetName(asset)}<span>${asset.demoLabel||money(asset.price,asset.price<.01?7:2)}<small>${asset.demoLabel?(tvSymbols[asset.symbol]?'Exchange chart':'No chart data'):chg(asset)}</small></span></button></div>`).join('');
+}
 function stake(){
   const zro=zeroDemoAssets[0];
   return heading('Stake','Try delegating sample ZRO in Demo Mode.')+`
@@ -323,44 +360,183 @@ function activityIcons(entry){
   const symbols=Array.isArray(entry.symbols) ? entry.symbols :
     Array.from(String(entry.detail ?? '').matchAll(/(?:^|\s)\$?\d[\d,.]*\s+([A-Za-z][A-Za-z0-9]*)\b/g),match=>match[1]);
   const tokens=[...new Set(symbols)].filter(symbol=>assets.some(asset=>asset.symbol===symbol)).slice(0,2);
-  const fallback=entry.type==='Bridge' ? icons.bridge : entry.type==='Swap' ? icons.swap : icons.stake;
+  const fallback=entry.type==='Bridge' ? '<path d="M3 5v14M21 5v14M3 8c4 8 14 8 18 0M3 17h18"/>' : entry.type==='Swap' ? icons.swap : icons.stake;
   return `<span class="activity-asset-icons ${tokens.length===2?'activity-asset-pair':''}" aria-hidden="true">${tokens.length?tokens.map(symbol=>CanopyUI.token(symbol)).join(''):CanopyUI.graphic(fallback)}</span>`;
 }
 
+const demoActivityDuration = { Swap: 8000, Bridge: 20000 };
+let activityTimer;
+
+function activityStatus(entry, now = Date.now()) {
+  const receipt = entry.receipt;
+  const deadline = receipt?.endsAt;
+  const timed = Number.isFinite(deadline);
+  const remaining = timed && !receipt.settled ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0;
+  const phase = remaining === 0 ? 'complete' : entry.type === 'Bridge' && now < receipt.sourceAt ? 'source' : 'delivery';
+  return {remaining, phase, label: phase === 'complete' ? 'Complete' : phase === 'source' ? 'Source pending' : entry.type === 'Bridge' ? 'In transit' : 'Processing'};
+}
+
 function activityRows(kind){
-  const entries=state.activity.filter(entry=>entry&&(!kind||entry.type===kind));
+  const entries=state.activity.map((entry,index)=>({entry,index})).filter(({entry})=>entry&&(!kind||entry.type===kind));
   if(!entries.length){
-    const detail=kind==='Bridge'?'Simulated transfers will appear here.':kind==='Swap'?'Simulated swaps will appear here.':'Your demo swaps, bridges, and staking activity will appear here.';
-    return `<div class="empty">${CanopyUI.graphic(icons.activity)}<div>No moves yet.<small>${detail}</small></div></div>`;
+    const details={Bridge:'Simulated transfers will appear here.',Swap:'Simulated swaps will appear here.',Claim:'Your simulated ZRO claims will appear here.'};
+    return `<div class="empty">${CanopyUI.graphic(icons.activity)}<div>${kind==='Claim'?'No claims yet.':'No moves yet.'}<small>${details[kind]||'Your demo swaps, bridges, and staking activity will appear here.'}</small></div></div>`;
   }
-  return entries.reverse().map(entry=>`<div class="activity-row">
-    ${activityIcons(entry)}
-    <div class="activity-copy">${activityText(entry.type)}<small>${activityText(entry.detail)}</small></div>
-    <span class="positive">Simulated<small>${activityText(entry.time)}</small></span>
-  </div>`).join('');
+  return entries.reverse().map(({entry,index})=>{
+    const status=activityStatus(entry);
+    return `<button type="button" class="activity-row activity-link" data-activity-index="${index}" aria-haspopup="dialog">
+      ${activityIcons(entry)}
+      <span class="activity-copy">${activityText(entry.type)}<small>${activityText(entry.detail)}</small></span>
+      <span class="activity-status" data-activity-status="${index}" data-phase="${status.phase}"><span>${status.label}</span><small>${activityText(entry.time)}</small></span>
+      ${CanopyUI.graphic('<path d="m10 7 5 5-5 5"/>','activity-chevron')}
+    </button>`;
+  }).join('');
 }
+
+function activityTimeline(entry, status) {
+  const {receipt} = entry;
+  const sourceNetwork = receipt?.source || 'Source network';
+  const destinationNetwork = receipt?.destination || 'Destination network';
+  const stages = entry.type==='Bridge'
+    ? [ ['Submitted','Demo transfer created','done'], ['Source confirmation',sourceNetwork,status.phase==='source'?'current':'done'], ['Destination arrival',destinationNetwork,status.phase==='complete'?'done':status.phase==='delivery'?'current':'waiting'] ]
+    : [ ['Submitted','Demo activity recorded','done'], ['Completed',entry.type==='Swap'?'Sample balances updated':'Local demo balance updated',status.phase==='complete'?'done':'current'] ];
+  return stages.map(([title,detail,state])=>`<li data-stage="${state}" ${state==='current'?'aria-current="step"':''}><span class="activity-node">${state==='done'?CanopyUI.graphic('<path d="m5 12 4 4L19 6"/>'):''}</span><span><strong>${title}</strong><small>${activityText(detail)}</small></span></li>`).join('');
+}
+
+function activityCountdown(seconds) {
+  return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+}
+
+function openActivityDetails(index) {
+  const entry = state.activity[index];
+  if (!entry) return;
+  const status = activityStatus(entry);
+  const title = {Bridge:'Transfer status',Swap:'Swap status',Stake:'Stake status',Claim:'Claim status'}[entry.type] || 'Activity details';
+  showModal(`<div class="activity-tracker" id="activity-tracker" data-activity-index="${index}" data-phase="${status.phase}">
+    <div class="activity-tracker-header"><span class="tag">Demo Mode</span>${CanopyUI.graphic('<path d="M5 19C5 10 11 5 20 4c0 9-5 15-14 15m0 0L16 9M10 15h5"/>','activity-leaf')}</div>
+    <div class="activity-tracker-title">${activityIcons(entry)}<h2>${title}</h2></div>
+    <p class="activity-description">${activityText(entry.detail)}</p>
+    <div class="activity-tracker-state"><div><span class="data-caption">Status</span><strong data-status-label role="status">${status.label}</strong></div><div data-activity-eta ${status.remaining?'':'hidden'}><span class="data-caption">Demo time remaining</span><strong data-activity-countdown role="timer">${activityCountdown(status.remaining)}</strong></div></div>
+    <ol class="activity-timeline" aria-label="Demo transaction stages">${activityTimeline(entry,status)}</ol>
+    <p class="form-note">${entry.type==='Bridge'?'Simulated route. No assets move and destination balances do not change.':'This activity uses your sample balances. No onchain transaction was sent.'}</p>
+  </div>`);
+  scheduleActivityTick();
+}
+
+function settleDueActivity(now = Date.now()) {
+  const due = entry=>Number.isFinite(entry?.receipt?.endsAt) && !entry.receipt.settled && entry.receipt.endsAt <= now;
+  if(!state.activity.some(due))return false;
+  // Reconcile the saved receipt first: another tab may already have completed it.
+  let latest;
+  try { latest=JSON.parse(localStorage.getItem(demoStateKey)); } catch {}
+  let changed=false;
+  if(latest===null){
+    state.activity=[];
+    state.balances=Object.fromEntries(zeroDemoAssets.map(asset=>[asset.symbol,asset.balance]));
+    state.staked=240;
+    state.rewards=12;
+    return true;
+  }
+  if(latest?.version===state.version && Array.isArray(latest.activity)){
+    const previousBalances=state.balances;
+    state.activity=latest.activity;
+    state.balances=Object.fromEntries(demoSwapTokens.map(symbol=>[symbol,nonnegative(latest.balances?.[symbol],previousBalances[symbol])]));
+    state.staked=nonnegative(latest.staked,state.staked);
+    state.rewards=nonnegative(latest.rewards,state.rewards);
+    changed=demoSwapTokens.some(symbol=>state.balances[symbol]!==previousBalances[symbol]);
+  }
+  let settled=false;
+  for(const entry of state.activity.filter(due)){
+    const {receipt}=entry;
+    if(entry.type==='Swap' && demoSwapTokens.includes(receipt.to) && Number.isFinite(receipt.received) && receipt.received > 0){
+      state.balances[receipt.to]+=receipt.received;
+      changed=true;
+    }
+    receipt.settled=true;
+    settled=true;
+  }
+  // A storage error should not leave the current page or tracker frozen.
+  if(settled){try { persist(); } catch {}}
+  return changed;
+}
+
+function scheduleActivityTick() {
+  clearTimeout(activityTimer);
+  const now = Date.now();
+  if (!document.hidden && state.activity.some(entry=>!entry?.receipt?.settled && Number.isFinite(entry?.receipt?.endsAt))) {
+    activityTimer=setTimeout(refreshActivityStatus, Math.max(100, 1000 - now % 1000));
+  }
+}
+
+function refreshActivityStatus() {
+  const now=Date.now();
+  if(settleDueActivity(now)){
+    if(page==='swap') $('#amount').dispatchEvent(new Event('input'));
+    if(page==='portfolio' || page==='stake') render(true);
+  }
+  for(const indicator of document.querySelectorAll('[data-activity-status]')){
+    const entry=state.activity[Number(indicator.dataset.activityStatus)];
+    if(!entry)continue;
+    const status=activityStatus(entry,now);
+    if(indicator.dataset.phase===status.phase)continue;
+    indicator.dataset.phase=status.phase;
+    indicator.firstElementChild.textContent=status.label;
+  }
+  const tracker=appDialog.open ? $('#activity-tracker') : null;
+  const entry=tracker && state.activity[Number(tracker.dataset.activityIndex)];
+  if(entry){
+    const status=activityStatus(entry,now);
+    tracker.querySelector('[data-activity-eta]').hidden=!status.remaining;
+    tracker.querySelector('[data-activity-countdown]').textContent=activityCountdown(status.remaining);
+    if(tracker.dataset.phase!==status.phase){
+      tracker.dataset.phase=status.phase;
+      tracker.querySelector('[data-status-label]').textContent=status.label;
+      tracker.querySelector('.activity-timeline').innerHTML=activityTimeline(entry,status);
+    }
+  }
+  scheduleActivityTick();
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)clearTimeout(activityTimer);
+  else refreshActivityStatus();
+});
 function activity(){return heading('Activity','History of your simulated transfers, swaps, and staking.')+`<section class="card activity-card">${activityRows()}</section>`}
-function comingSoon(section){
-  const perps=section==='perps';
-  const title=perps?'Perps':'Rewards';
-  const subtitle=perps?'Perpetual markets on Zero.':'One place to see your rewards.';
-  const description=perps?'Explore perpetual markets and manage positions here once a Zero venue is integrated.':'Track eligibility and claim rewards here once a rewards program is available.';
-  return heading(title,subtitle)+`<section class="card zero-roadmap"><div class="zero-roadmap-mark">${navIcon(section)}</div><span class="tag">Coming soon</span><h2>${perps?'A place for your positions.':'Your rewards, in one view.'}</h2><p>${description}</p><a class="secondary" href="#${perps?'markets':'portfolio'}">${perps?'Explore markets':'Back to portfolio'}</a></section>`;
+function comingSoon(){
+  return heading('Perps','Perpetual markets on Zero.')+`<section class="card zero-roadmap"><div class="zero-roadmap-mark">${navIcon('perps')}</div><span class="tag">Coming soon</span><h2>A place for your positions.</h2><p>Explore perpetual markets and manage positions here once a Zero venue is integrated.</p><a class="secondary" href="#markets">Explore markets</a></section>`;
 }
-function render(){
-  range='1W';
+function rewards(){
+  const claimable=state.rewards>0;
+  return heading('Rewards','Claim demo ZRO and review your past claims.')+`
+    <div class="rewards-layout">
+      <section class="card rewards-claim" aria-labelledby="rewards-claim-title">
+        <div class="card-top"><h2 id="rewards-claim-title">Claimable rewards</h2><span class="tag">Demo Mode</span></div>
+        <div class="rewards-balance">${CanopyUI.token('ZRO')}<strong>${num(state.rewards)} <span>ZRO</span></strong></div>
+        <p class="form-note">${claimable?'Claiming adds this sample ZRO to your demo portfolio.':'You have no demo rewards available to claim.'}</p>
+        <button class="primary" type="button" data-action="claim" ${claimable?'':'disabled'}>Claim demo rewards</button>
+      </section>
+      <section class="card activity-card rewards-history" aria-labelledby="rewards-history-title">
+        <div class="card-top"><h2 id="rewards-history-title">Claim history</h2></div>
+        ${activityRows('Claim')}
+      </section>
+    </div>`;
+}
+function render(preserveRange=false){
+  settleDueActivity();
+  if(!preserveRange)range='1W';
   const [fragment, mode] = location.hash.slice(1).split('/');
   // The submitted #testnet and older #bridge URLs still open the trade workspace.
   const route = fragment === 'testnet' || fragment === 'bridge' ? 'swap' : fragment;
   tradeMode = fragment === 'bridge' || (fragment === 'swap' && mode === 'bridge') ? 'bridge' : 'swap';
   page=Object.hasOwn(names,route)?route:'portfolio';
   nav();
-  const views={portfolio,markets,swap:demoTrade,stake,perps:()=>comingSoon('perps'),rewards:()=>comingSoon('rewards'),activity};
+  const views={portfolio,markets,swap:demoTrade,stake,perps:comingSoon,rewards,activity};
   $('#main').innerHTML=views[page]();
   if(page==='swap') mountDemoTrade();
   if(page==='markets') $('#search').oninput=e=>$('#market-rows').innerHTML=marketRows(e.target.value);
   hydrateCharts();
-  CanopyUI.enter($('#main'));
+  if(!preserveRange)CanopyUI.enter($('#main'));
+  scheduleActivityTick();
 }
 function updateQuote() {
   const bridge = tradeMode === 'bridge';
@@ -431,73 +607,65 @@ appDialog.addEventListener('click', event => {
   backdropPressed = false;
 });
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),3200)}
-function log(type,detail,symbols=[]){
+function log(type,detail,symbols=[],receipt){
   const time=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-  state.activity.push({type,detail,symbols,time});
+  const index=state.activity.push({type,detail,symbols,time,receipt})-1;
   persist();
+  return index;
 }
-let simulatingTrade = false;
 function reviewTrade() {
-  if (simulatingTrade) {
-    toast('A demo transaction is already in progress.');
-    return;
-  }
   const action = tradeMode;
   const bridge = action === 'bridge';
   const from = $('#from-asset').value;
   const to = $('#to-asset').value;
   const amount = Number($('#amount').value);
   const received = Number($('#receive').value);
-  const route = bridge ? `${$('#from-network').value} to ${$('#to-network').value}` : '';
-  const activityType = bridge ? 'Bridge' : 'Swap';
+  const source = bridge ? $('#from-network').value : null;
+  const destination = bridge ? $('#to-network').value : null;
+  const route = bridge ? `${source} to ${destination}` : '';
+  const type = bridge ? 'Bridge' : 'Swap';
   showModal(`<div class="modal-icon">${bridge ? '◎' : '⇄'}</div>
     <h2>Review demo ${action}</h2>
     <p>${bridge ? route : 'Check amounts and fees before confirming.'}</p>
     <div class="trade-details">
       <div><span>You pay</span><b>${num(amount)} ${from}</b></div>
       <div><span>You receive</span><b>${num(received)} ${to}</b></div>
+      <div><span>Demo timing</span><b>${demoActivityDuration[type]/1000} seconds</b></div>
       <div><span>Mode</span><b>Simulation only</b></div>
     </div>
-    <p>${bridge ? 'This records a demo bridge route. Destination balances are not connected.' : 'This updates your local demo balances.'} No real assets will move.</p>
+    <p>${bridge ? 'This records a demo bridge route. Destination balances are not connected.' : 'Sample tokens arrive in your portfolio after the countdown.'} No real assets will move.</p>
+    <p class="form-note" id="trade-submit-status" role="status"></p>
     <button class="primary full" id="confirm">Simulate ${action}</button>`);
   const button = $('#confirm');
-  button.onclick = async () => {
-    if (simulatingTrade) return;
-    simulatingTrade = true;
+  button.onclick = () => {
+    if (button.disabled) return;
     button.disabled = true;
-    button.textContent = 'Simulating…';
-    const progress = document.createElement('div');
-    progress.innerHTML = CanopyUI.progress(`Simulating your ${action}`, 'Demo Mode · No onchain transaction.');
-    button.before(progress);
-    CanopyUI.transaction(`${activityType} simulation in progress`);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const modal = $('#modal');
-    try {
-      if (amount > (state.balances[from] ?? 0)) throw Error('Insufficient demo balance.');
-      if (!bridge) {
-        state.balances[from] -= amount;
-        state.balances[to] = (state.balances[to] ?? 0) + received;
-      }
-      log(activityType, bridge ? `${num(amount)} ${from} · ${route}` : `${num(amount)} ${from} to ${num(received)} ${to}`, bridge ? [from] : [from,to]);
-      if (modal.open && modal.contains(button)) modal.close();
-      render();
-      toast(`${activityType} simulation complete`);
-      CanopyUI.transaction(`${activityType} simulation complete`, false);
-    } catch (error) {
-      progress.textContent = error.message;
-      CanopyUI.transaction('Demo transaction could not complete', false, 'error');
-      button.disabled = false;
-      button.textContent = `Simulate ${action}`;
-    } finally {
-      simulatingTrade = false;
+    if (!Number.isFinite(amount) || amount <= 0 || amount > (state.balances[from] ?? 0) || !(received > 0)) {
+      $('#trade-submit-status').textContent='The amount is no longer available. Open a new quote.';
+      return;
     }
+    const now = Date.now();
+    const receipt = {endsAt:now+demoActivityDuration[type], sourceAt:bridge?now+5000:null, source, destination, to, received, settled:false};
+    if (!bridge) state.balances[from] -= amount;
+    let index;
+    try {
+      index=log(type, bridge ? `${num(amount)} ${from} · ${route}` : `${num(amount)} ${from} to ${num(received)} ${to}`, bridge ? [from] : [from,to], receipt);
+    } catch {
+      state.activity.pop();
+      if (!bridge) state.balances[from] += amount;
+      $('#trade-submit-status').textContent='Could not save this demo trade. Try again.';
+      button.disabled=false;
+      return;
+    }
+    render(true);
+    openActivityDetails(index);
   };
 }
 function assetDetail(symbol){
   const asset=assets.find(item=>item.symbol===symbol);
   if(!asset)return;
   const inDemo=demoSwapTokens.includes(symbol);
-  showModal(`<div class="asset-name" style="margin-bottom:22px">${coin(asset)}<div><h2 style="margin:0">${asset.name}</h2><small>${symbol}${asset.demoLabel?' · '+asset.demoLabel:''}</small></div></div>${liveChart(symbol,'detail-chart')}<div class="modal-actions"><button class="secondary" data-pin="${symbol}">${watchlist.includes(symbol)?'Remove from watchlist':'Add to watchlist'}</button>${inDemo?'<button class="primary" id="trade-asset">Open swap</button>':''}</div>`);
+  showModal(`<div class="asset-name" style="margin-bottom:22px">${coin(asset)}<div><h2 style="margin:0">${asset.name}</h2><small>${symbol}${asset.demoLabel?' · '+asset.demoLabel:''}</small></div></div>${liveChart(symbol,'detail-chart')}<div class="modal-actions">${watchToggle(asset,true)}${inDemo?'<button class="primary" id="trade-asset">Open swap</button>':''}</div>`);
   $('#modal').classList.add('chart-modal');
   hydrateCharts();
   if(inDemo)$('#trade-asset').onclick=()=>{
@@ -539,6 +707,7 @@ document.addEventListener('click',event=>{
   const button=event.target.closest('button, tr[data-asset]');
   if(!button)return;
   const action=button.dataset;
+  if(action.activityIndex!=null){openActivityDetails(Number(action.activityIndex));return;}
   if(action.go)location.hash=action.go;
   if(action.range){
     range=action.range;
@@ -551,7 +720,7 @@ document.addEventListener('click',event=>{
   }
   if(action.market){market=action.market;selectedSymbol=assets.find(asset=>asset.type===market).symbol;render();}
   if(action.hold){holdTab=action.hold;render();}
-  if(action.mini){miniTab=action.mini;render();}
+  if(action.mini){miniTab=action.mini;refreshRadar();}
   if(action.asset)assetDetail(action.asset);
   if(action.stake)stakeModal(action.stake);
   if(action.action==='claim')claimDemoRewards();
@@ -562,7 +731,34 @@ $('#mobile-theme').onclick=()=>$('#appearance').click();
 $('#appearance').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 $('#global-search').onclick=()=>{location.hash='markets';render();$('#search').focus()};
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();$('#global-search').click()}});
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.pin){const symbol=b.dataset.pin;watchlist=watchlist.includes(symbol)?watchlist.filter(x=>x!==symbol):[...watchlist,symbol];localStorage.setItem('canopy-zero-watchlist',JSON.stringify(watchlist));if(page==='markets')$('#market-rows').innerHTML=marketRows($('#search').value);if($('#modal').open){b.textContent=watchlist.includes(symbol)?'Remove from watchlist':'Add to watchlist'}toast(watchlist.includes(symbol)?`${symbol} added to watchlist`:`${symbol} removed from watchlist`)}if(b.dataset.selectMarket){selectedSymbol=b.dataset.selectMarket;$('#selected-market').innerHTML=marketChartTitle(selectedSymbol);$('#market-live').innerHTML=liveChart(selectedSymbol,'markets-chart');$('#market-rows').innerHTML=marketRows($('#search').value);hydrateCharts()}});
+document.addEventListener('click',event=>{
+  const button=event.target.closest('button');
+  if(!button)return;
+  const {pin,selectMarket}=button.dataset;
+  if(pin){
+    const asset=assets.find(item=>item.symbol===pin);
+    if(!asset)return;
+    const pinned=!watchlist.includes(pin);
+    watchlist=pinned?[...watchlist,pin]:watchlist.filter(symbol=>symbol!==pin);
+    try { localStorage.setItem(watchlistKey,JSON.stringify(watchlist)); } catch {}
+    const fromRadar=Boolean(button.closest('.radar-watchlist'));
+    if(page==='markets'&&miniTab==='watchlist')refreshRadar();
+    for(const toggle of document.querySelectorAll(`[data-pin="${pin}"]`)){
+      toggle.setAttribute('aria-pressed',String(pinned));
+      toggle.title=`${pinned?'Remove from':'Add to'} watchlist`;
+      toggle.innerHTML=pinContents(pinned,toggle.classList.contains('watch-action'));
+    }
+    if(fromRadar) $('.market-radar [data-mini="watchlist"]')?.focus({preventScroll:true});
+    toast(`${asset.symbol} ${pinned?'added to':'removed from'} Watchlist`);
+  }
+  if(selectMarket){
+    selectedSymbol=selectMarket;
+    $('#selected-market').innerHTML=marketChartTitle(selectedSymbol);
+    $('#market-live').innerHTML=liveChart(selectedSymbol,'markets-chart');
+    $('#market-rows').innerHTML=marketRows($('#search').value);
+    hydrateCharts();
+  }
+});
 setTheme(document.documentElement.dataset.theme||'light');
 window.addEventListener('hashchange',()=>{
   if(appDialog.open)appDialog.close();

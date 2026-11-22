@@ -34,7 +34,7 @@ function nav(){
   $('#nav').innerHTML=links.join('')+`<button id="more-nav" class="nav-more ${mobilePrimary.includes(page)?'':'active'}" aria-label="More pages" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg><span>More</span></button>`;
   $('#breadcrumb').textContent=names[page];
   $('#more-nav').onclick=()=>{
-    showModal(`<h2>More from Canopy Zero</h2><div class="more-pages">${Object.keys(names).filter(key=>!mobilePrimary.includes(key)).map(key=>`<a href="#${key}" class="more-page ${page===key?'selected':''}">${navIcon(key)}<span>${names[key]}</span></a>`).join('')}</div>`);
+    showModal(`<h2>More from Canopy Zero</h2><div class="more-pages">${Object.keys(names).filter(key=>!mobilePrimary.includes(key)).map(key=>`<a href="#${key}" class="more-page ${page===key?'selected':''}">${navIcon(key)}<span>${names[key]}</span></a>`).join('')}</div><button type="button" class="quiet more-reset" data-action="reset-demo">Reset demo…</button>`);
     document.querySelectorAll('.more-page').forEach(link=>link.onclick=()=>$('#modal').close());
   };
 }
@@ -657,13 +657,14 @@ function comingSoon(){
 }
 function rewards(){
   const claimable=state.rewards>0;
+  const alreadyClaimed=state.activity.some(entry=>entry?.type==='Claim');
   return heading('Rewards','Claim demo ZRO and review your past claims.')+`
     <div class="rewards-layout">
       <section class="card rewards-claim" aria-labelledby="rewards-claim-title">
         <div class="card-top"><h2 id="rewards-claim-title">Claimable rewards</h2><span class="tag">Demo Mode</span></div>
         <div class="rewards-balance">${CanopyUI.token('ZRO')}<strong>${num(state.rewards)} <span>ZRO</span></strong></div>
-        <p class="form-note">${claimable?'Claiming adds this sample ZRO to your demo portfolio.':'You have no demo rewards available to claim.'}</p>
-        <button class="primary" type="button" data-action="claim" ${claimable?'':'disabled'}>Claim demo rewards</button>
+        <p class="form-note">${claimable?'Claiming adds this sample ZRO to your demo portfolio.':alreadyClaimed?'You already claimed your demo rewards. See the receipt in your claim history.':'You have no demo rewards available to claim.'}</p>
+        ${claimable?'<button class="primary" type="button" data-action="claim">Claim demo rewards</button>':'<button class="secondary" type="button" data-action="reset-demo">Reset demo…</button>'}
       </section>
       <section class="card activity-card rewards-history" aria-labelledby="rewards-history-title">
         <div class="card-top"><h2 id="rewards-history-title">Claim history</h2></div>
@@ -872,13 +873,32 @@ function stakeModal(symbol){
 }
 function claimDemoRewards(){
   if(state.rewards<=0)return;
-  showModal(`<h2>Claim your demo rewards</h2><p>Move ${num(state.rewards)} sample ZRO to your available balance.</p><button class="primary full" id="confirm-claim">Simulate claim</button>`);
-  $('#confirm-claim').onclick=()=>{
-    const rewards=state.rewards;
-    state.balances.ZRO+=rewards;
+  showModal(`<h2>Claim your demo rewards</h2><p>Move ${num(state.rewards)} sample ZRO to your available balance.</p><p class="form-note negative" id="claim-reward-error" role="status" hidden></p><button class="primary full" id="confirm-claim">Simulate claim</button>`);
+  const confirm=$('#confirm-claim');
+  const error=$('#claim-reward-error');
+  confirm.onclick=()=>{
+    if(confirm.disabled||state.rewards<=0)return;
+    confirm.disabled=true;
+    error.hidden=true;
+    const {rewards}=state;
+    const balance=state.balances.ZRO;
+    const activityCount=state.activity.length;
+    state.balances.ZRO=balance+rewards;
     state.rewards=0;
-    log('Claim',`${num(rewards)} ZRO rewards`,['ZRO']);
-    $('#modal').close();render();toast('Demo rewards claimed');
+    try {
+      log('Claim',`${num(rewards)} ZRO rewards`,['ZRO']);
+    } catch {
+      state.balances.ZRO=balance;
+      state.rewards=rewards;
+      state.activity.length=activityCount;
+      error.textContent='Could not save the claim. Your demo balance is unchanged. Try again.';
+      error.hidden=false;
+      confirm.disabled=false;
+      return;
+    }
+    $('#modal').close();
+    render();
+    toast('Demo rewards claimed');
   };
 }
 document.addEventListener('click',event=>{
@@ -902,13 +922,40 @@ document.addEventListener('click',event=>{
   if(action.asset)assetDetail(action.asset);
   if(action.stake)stakeModal(action.stake);
   if(action.action==='claim')claimDemoRewards();
+  if(action.action==='reset-demo')confirmResetDemo();
 });
-$('#reset').onclick=()=>{showModal('<h2>Start fresh?</h2><p>This resets only your local demo balances and simulated activity.</p><button class="primary full" id="confirm-reset">Reset demo</button>');$('#confirm-reset').onclick=()=>{localStorage.removeItem(demoStateKey);location.reload()}};
-function setTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('canopy-zero-theme',theme);$('#appearance').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').title=`Switch to ${theme==='light'?'dark':'light'} mode`;$('#mobile-theme').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;$('#mobile-theme').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;document.querySelectorAll('[data-tv]').forEach(el=>{delete el.dataset.loaded;el.innerHTML=''});hydrateCharts()}
+function confirmResetDemo(){
+  showModal(`<h2>Reset your demo?</h2><p>This restores the starting balances and clears your simulated transaction and claim history in this browser.</p><p id="reset-demo-error" class="form-note negative" role="status" hidden></p><button type="button" class="primary full" id="confirm-reset">Reset demo</button>`);
+  $('#confirm-reset').onclick=()=>{
+    try { localStorage.removeItem(demoStateKey); }
+    catch {
+      const error=$('#reset-demo-error');
+      error.hidden=false;
+      error.textContent='Could not reset the demo in this browser.';
+      return;
+    }
+    location.reload();
+  };
+}
+$('#reset').onclick=confirmResetDemo;
+function setTheme(theme){document.documentElement.dataset.theme=theme;try { localStorage.setItem('canopy-zero-theme',theme); } catch {}$('#appearance').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').title=`Switch to ${theme==='light'?'dark':'light'} mode`;$('#mobile-theme').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;$('#mobile-theme').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;document.querySelectorAll('[data-tv]').forEach(el=>{delete el.dataset.loaded;el.innerHTML=''});hydrateCharts()}
 $('#mobile-theme').onclick=()=>$('#appearance').click();
 $('#appearance').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
-$('#global-search').onclick=()=>{location.hash='markets';render();$('#search').focus()};
-document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();$('#global-search').click()}});
+function openMarketSearch(){
+  if(page!=='markets'){
+    history.pushState(null,'','#markets');
+    render();
+  }
+  // Keep focus inside the click gesture so mobile browsers can open the keyboard.
+  $('#search')?.focus();
+}
+$('#global-search').onclick=openMarketSearch;
+document.addEventListener('keydown',event=>{
+  if(event.key!=='/' || document.documentElement.classList.contains('welcome-open') ||
+    ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName) || appDialog.open)return;
+  event.preventDefault();
+  openMarketSearch();
+});
 document.addEventListener('click',event=>{
   const button=event.target.closest('button');
   if(!button)return;
@@ -933,8 +980,13 @@ document.addEventListener('click',event=>{
     selectedSymbol=selectMarket;
     $('#selected-market').innerHTML=marketChartTitle(selectedSymbol);
     $('#market-live').innerHTML=liveChart(selectedSymbol,'markets-chart');
-    $('#market-rows').innerHTML=marketRows($('#search').value);
+    $('.market-row.selected')?.classList.remove('selected');
+    button.closest('.market-row')?.classList.add('selected');
     hydrateCharts();
+    if(matchMedia('(max-width: 980px)').matches){
+      const chart=$('.market-chart-panel');
+      chart.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+    }
   }
 });
 setTheme(document.documentElement.dataset.theme||'light');

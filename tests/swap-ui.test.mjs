@@ -93,7 +93,10 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
     location,
     localStorage: {
       getItem: key => storage.get(key),
-      setItem: (key, value) => storage.set(key, value)
+      setItem: (key, value) => {
+        options.beforeSetItem?.(key, value);
+        storage.set(key, value);
+      }
     },
     Date: class extends Date {
       constructor(...args) { super(...(args.length ? args : [now])); }
@@ -118,7 +121,8 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
     listeners.visibilitychange?.forEach(handler => handler());
   };
   return { element, storage, embeds, location, balances, advance, setHidden, copied,
-    now: () => now, openStake: () => sandbox.stakeModal('ZRO'), showActivity: index => sandbox.openActivityDetails(index) };
+    now: () => now, openStake: () => sandbox.stakeModal('ZRO'), openClaim: () => sandbox.claimDemoRewards(),
+    showActivity: index => sandbox.openActivityDetails(index) };
 }
 
 test('swap offers Zero ecosystem examples and updates the selected pair and logos', () => {
@@ -353,4 +357,42 @@ test('demo hashes stay stable across reloads and copy the full reference', async
   assert.ok(reopened.element('#modal-content').innerHTML.includes(saved));
   await reopened.element('#copy-demo-hash').onclick();
   assert.deepEqual(reopened.copied, [saved]);
+});
+
+test('Rewards explains an existing claim and offers an explicit demo reset', () => {
+  const storage = new Map([['canopy-zero-state', JSON.stringify({
+    version: 2, balances: { ZRO: 1012 }, rewards: 0, staked: 240,
+    activity: [{ type: 'Claim', detail: '12 ZRO rewards', time: '10:00 AM' }]
+  })]]);
+  const { element } = openSwap('#rewards', {}, [], { storage });
+  const html = element('#main').innerHTML;
+  assert.match(html, /You already claimed your demo rewards/);
+  assert.match(html, /data-action="reset-demo">Reset demo…/);
+  assert.match(html, /data-activity-index="0"[\s\S]*12 ZRO rewards/);
+  assert.doesNotMatch(html, /data-action="claim"/);
+});
+
+test('Rewards retains an unsaved claim for retry and credits the claim only once', () => {
+  let blocked = true;
+  const { element, storage, openClaim, balances } = openSwap('#rewards', {}, [], {
+    beforeSetItem(key) {
+      if (blocked && key === 'canopy-zero-state') throw new Error('Simulated storage failure');
+    }
+  });
+  openClaim();
+  const confirm = element('#confirm-claim');
+  confirm.onclick();
+  assert.equal(element('#modal').open, true);
+  assert.equal(confirm.disabled, false);
+  assert.match(element('#claim-reward-error').textContent, /unchanged/);
+  assert.equal(JSON.parse(storage.get('canopy-zero-state')).balances.ZRO, balances.ZRO);
+  blocked = false;
+  confirm.onclick();
+  confirm.onclick();
+  const saved = JSON.parse(storage.get('canopy-zero-state'));
+  assert.equal(saved.rewards, 0);
+  assert.equal(saved.balances.ZRO, balances.ZRO + 12);
+  assert.equal(saved.activity.length, 1);
+  assert.equal(saved.activity[0].type, 'Claim');
+  assert.equal(element('#modal').open, false);
 });

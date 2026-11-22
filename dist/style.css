@@ -255,3 +255,18 @@ html:not(.welcome-open) #main{visibility:visible}
 .trade-setting input[aria-invalid=true]{color:var(--negative,var(--text))}
 .trade-review-recipient{max-width:min(72%,300px);min-width:0;text-align:right;overflow-wrap:anywhere;font-family:ui-monospace,monospace}
 @media(max-width:440px){.trade-setting:has(.slippage-controls){grid-template-columns:1fr}.slippage-input{width:74px}}
+
+.rewards-claim{padding:clamp(18px,3vw,28px)}
+.rewards-claim .card-top{flex-wrap:wrap;row-gap:8px}
+.more-reset{margin-top:14px;min-height:44px;width:100%;text-align:start;padding-inline:12px;color:var(--muted)}
+.market-chart-panel{scroll-margin-top:90px}
+@media(max-width:720px){
+  .glass-header .icon-button,.glass-header .wallet{min-height:44px}
+  .glass-header .icon-button{min-width:40px}
+  #modal{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
+  #modal .close{min-width:44px;min-height:44px}
+  .amount-shortcuts button{min-height:36px}
+  .network-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .network-row label,.network-row select{min-width:0;max-width:100%}
+}
+@media(max-width:360px){.network-row,.activity-filters{grid-template-columns:1fr}}

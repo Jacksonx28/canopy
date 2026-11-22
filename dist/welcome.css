@@ -27,3 +27,22 @@ html,body{width:100%;max-width:100%;overflow-x:hidden;overflow-x:clip}
 }
 
 @media(max-width:640px){.welcome-screen{scrollbar-width:none}.welcome-screen::-webkit-scrollbar{display:none}}
+
+#auth-wallet {
+  border-color: var(--accent, #438253);
+  background: #244c35;
+  color: #fff;
+  font-weight: 650;
+}
+#auth-wallet:hover { background: #356343; }
+html[data-theme=dark] #auth-wallet {
+  background: #b6e58e;
+  color: #102113;
+}
+html[data-theme=dark] #auth-wallet:hover { background: #c8eba9; }
+.zero-wallet-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#zero-wallet-settings .address { overflow-wrap: anywhere; }

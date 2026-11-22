@@ -8,12 +8,18 @@ const loader = $('#entry-loader');
 const app = [$('.sidebar'), $('.shell')];
 const accountButton = $('#account-access');
 const walletButton = $('#wallet');
+const splashWalletButton = $('#auth-wallet');
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const shortAddress = address => `${address.slice(0, 6)}…${address.slice(-4)}`;
 const guestKey = 'canopy-zero-guest';
 const wallets = [];
+const walletBrands = {
+  rabby: { name: 'Rabby', icon: 'assets/rabby-wallet.png', website: 'https://rabby.io/' },
+  // MetaMask fox from the official logo pack at https://metamask.io/assets.
+  metamask: { name: 'MetaMask', icon: 'assets/metamask-wallet.svg', website: 'https://metamask.io/download/' },
+};
 let entering = false;
 let connecting = false;
 let authBusy = false;
@@ -97,10 +103,20 @@ function discover(provider, info) {
   if ($('#zero-wallet-choices') && !connecting) renderWallets();
 }
 
-function walletIcon(wallet) {
-  const icon = safeWalletIcon(wallet.icon) || (wallet.provider.isRabby ? 'assets/rabby-wallet.png' : '');
+function walletBrand(wallet) {
+  const rdns = wallet.rdns?.toLowerCase();
+  if (rdns === 'io.rabby' || (!rdns && wallet.provider.isRabby)) return walletBrands.rabby;
+  if (rdns === 'io.metamask' || (!rdns && wallet.provider.isMetaMask)) return walletBrands.metamask;
+  return null;
+}
+
+function walletIcon(icon) {
   const glyph = window.CanopyUI.graphic('<rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 9h18m-5 5h3"/>');
   return `<span class="wallet-provider-icon">${icon ? `<img src="${escape(icon)}" alt="" width="32" height="32">` : glyph}</span>`;
+}
+
+function providerIcon(wallet) {
+  return walletIcon(walletBrand(wallet)?.icon || safeWalletIcon(wallet.icon));
 }
 
 function modalStatus(message, error = false) {
@@ -114,14 +130,14 @@ function renderWallets() {
   const choiceList = $('#zero-wallet-choices');
   choiceList.innerHTML = wallets.length ? wallets.map((wallet, index) => `
     <button class="wallet-choice" type="button" data-wallet-index="${index}">
-      ${walletIcon(wallet)}<span><b>${escape(wallet.name)}</b><small>${escape(wallet.rdns || 'Installed EVM wallet')}</small></span>
+      ${providerIcon(wallet)}<span><b>${escape(wallet.name)}</b><small>${escape(wallet.rdns || 'Installed EVM wallet')}</small></span>
       <span class="wallet-choice-status">Connect</span>
     </button>`).join('') : `
-    <p>No injected wallet was detected. Open Canopy Zero in a browser with Rabby, MetaMask, or another EVM wallet.</p>
-    <div class="modal-actions">
-      <a class="secondary" href="https://rabby.io/" target="_blank" rel="noopener noreferrer">Get Rabby</a>
-      <a class="secondary" href="https://metamask.io/" target="_blank" rel="noopener noreferrer">Get MetaMask</a>
-    </div>`;
+    <p>No wallet was detected in this browser. Try opening Canopy Zero in your wallet’s built-in browser or use a wallet extension on desktop.</p>
+    ${Object.values(walletBrands).map(({ name, icon, website }) => `
+      <a class="wallet-choice wallet-download" href="${website}" target="_blank" rel="noopener noreferrer">
+        ${walletIcon(icon)}<span><b>Get ${name}</b></span>
+      </a>`).join('')}`;
   for (const button of choiceList.querySelectorAll('[data-wallet-index]')) {
     button.disabled = connecting;
     button.onclick = () => connect(wallets[Number(button.dataset.walletIndex)]);
@@ -167,7 +183,7 @@ function showSettings() {
   window.showModal(`
     <div id="zero-wallet-settings">
       <h2>Wallet &amp; account</h2>
-      <p class="zero-wallet-label">${walletIcon(context.wallet)} <b>${escape(context.wallet.name)} connected</b></p>
+      <p class="zero-wallet-label">${providerIcon(context.wallet)} <b>${escape(context.wallet.name)} connected</b></p>
       <p class="address">${escape(context.address)}</p>
       <p>${escape(networkName)} · Demo Mode</p>
       <div class="trade-details">
@@ -314,7 +330,8 @@ const legacyProviders = window.ethereum?.providers;
 for (const provider of Array.isArray(legacyProviders) ? legacyProviders : [window.ethereum]) {
   discover(provider, { name: provider?.isRabby ? 'Rabby' : provider?.isMetaMask ? 'MetaMask' : 'Browser wallet' });
 }
-$('#auth-wallet').onclick = openWallet;
+splashWalletButton.innerHTML = `<span class="splash-wallet-marks" aria-hidden="true">${Object.values(walletBrands).map(({ icon }) => walletIcon(icon)).join('')}</span><span>Connect wallet</span>`;
+splashWalletButton.onclick = openWallet;
 $('#welcome-guest').onclick = () => {
   connection.disconnect();
   void enter('guest');

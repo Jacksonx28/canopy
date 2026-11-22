@@ -107,3 +107,17 @@ html:not(.welcome-open) #main{visibility:visible}
 @media(max-width:400px){.glass-header .header-right{gap:8px}}
 @media(max-width:430px){.glass-header .header-right{gap:4px}.glass-header .zero-demo{display:none}}
 @media(max-width:360px){.glass-header #global-search{display:none}}
+
+/* Show the market list as two distinct columns on mid-size screens. */
+.market-radar{margin:0 0 34px}
+.market-radar .token-art{min-height:80px;height:clamp(80px,12vw,128px)}
+.market-sidebar #market-rows{min-width:0}
+.market-row .market-select{min-width:0}
+.portfolio-history-label{margin:16px 0 0}
+@media(min-width:721px) and (max-width:980px){
+  .market-sidebar #market-rows{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .market-sidebar #market-rows>.market-row:nth-child(odd){border-inline-end:1px solid var(--line)}
+  .market-sidebar #market-rows>.empty{grid-column:1/-1}
+}
+.zero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.zero-stats>div:last-child{grid-column:auto}

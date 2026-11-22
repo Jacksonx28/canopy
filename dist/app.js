@@ -1,11 +1,32 @@
 const $=s=>document.querySelector(s);const money=(v,d=2)=>v==null?'Open chart':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:d}).format(v);const num=v=>new Intl.NumberFormat('en-US',{maximumFractionDigits:5}).format(v);
 const assets=[{name:'Bitcoin',symbol:'BTC',icon:'₿',price:97420.10,change:2.41,balance:.382,cls:'btc',type:'crypto'},{name:'Ethereum',symbol:'ETH',icon:'♦',price:3412.60,change:1.86,balance:5.24,cls:'eth',type:'crypto'},{name:'Solana',symbol:'SOL',icon:'≋',price:214.35,change:4.72,balance:36.8,cls:'sol',type:'crypto'},{name:'USD Coin',symbol:'USDC',icon:'$',price:1,change:.01,balance:10850.01,cls:'sol',type:'crypto'},{name:'NVIDIA',symbol:'NVDA',icon:'N',price:145.89,change:3.12,balance:40,type:'stocks'},{name:'Tesla',symbol:'TSLA',icon:'T',price:352.56,change:-1.24,balance:0,type:'stocks'},{name:'Apple',symbol:'AAPL',icon:'a',price:228.22,change:.84,balance:20,type:'stocks'},{name:'Dogecoin',symbol:'DOGE',icon:'Ð',price:.3842,change:12.84,balance:0,type:'memes',cls:'btc'},{name:'Pepe',symbol:'PEPE',icon:'◉',price:.0000214,change:18.62,balance:0,type:'memes',cls:'sol'},{name:'dogwifhat',symbol:'WIF',icon:'ŵ',price:3.12,change:-3.18,balance:0,type:'memes',cls:'eth'},{name:'Bonk',symbol:'BONK',icon:'b',price:.0000432,change:8.41,balance:0,type:'memes',cls:'btc'}];
 assets.push(...[{"name": "XRP", "symbol": "XRP", "icon": "X", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Cardano", "symbol": "ADA", "icon": "A", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Avalanche", "symbol": "AVAX", "icon": "A", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Chainlink", "symbol": "LINK", "icon": "L", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Polkadot", "symbol": "DOT", "icon": "D", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Litecoin", "symbol": "LTC", "icon": "L", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Bitcoin Cash", "symbol": "BCH", "icon": "B", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Uniswap", "symbol": "UNI", "icon": "U", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Aave", "symbol": "AAVE", "icon": "A", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "NEAR", "symbol": "NEAR", "icon": "N", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Sui", "symbol": "SUI", "icon": "S", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Arbitrum", "symbol": "ARB", "icon": "A", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Optimism", "symbol": "OP", "icon": "O", "price": null, "change": null, "balance": 0, "type": "crypto"}, {"name": "Microsoft", "symbol": "MSFT", "icon": "M", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Amazon", "symbol": "AMZN", "icon": "A", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Alphabet", "symbol": "GOOGL", "icon": "G", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Meta", "symbol": "META", "icon": "M", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Netflix", "symbol": "NFLX", "icon": "N", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "AMD", "symbol": "AMD", "icon": "A", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Intel", "symbol": "INTC", "icon": "I", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Coinbase", "symbol": "COIN", "icon": "C", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Palantir", "symbol": "PLTR", "icon": "P", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Strategy", "symbol": "MSTR", "icon": "M", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "JPMorgan", "symbol": "JPM", "icon": "J", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Visa", "symbol": "V", "icon": "V", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Disney", "symbol": "DIS", "icon": "D", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Walmart", "symbol": "WMT", "icon": "W", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "Uber", "symbol": "UBER", "icon": "U", "price": null, "change": null, "balance": 0, "type": "stocks"}, {"name": "S&P 500 ETF", "symbol": "SPY", "icon": "S", "price": null, "change": null, "balance": 0, "type": "stocks"}]);
-let stored;try{stored=JSON.parse(localStorage.getItem('canopy-zero-state'))}catch{}let state=stored||{balances:Object.fromEntries(assets.map(a=>[a.symbol,a.balance])),staked:12480,rewards:142.86,activity:[]};let page='portfolio',range='1W',market='stocks',holdTab='assets',miniTab='stocks';const persist=()=>localStorage.setItem('canopy-zero-state',JSON.stringify(state));
-const icons={portfolio:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',markets:'<path d="M4 19V12m8 7V5m8 14V9"/>',swap:'<path d="M4 7h16l-4-4M20 17H4l4 4"/>',bridge:'<path d="M3 18V6m18 12V6M3 8c4 10 14 10 18 0M8 14v4m8-4v4"/>',stake:'<path d="M12 3v18M3 12h18M5.5 5.5l13 13m0-13-13 13"/>',activity:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>'};
+const zeroDemoAssets = [
+  {name:'Zero',symbol:'ZRO',price:2.5,change:null,balance:1800,type:'crypto',demoLabel:'Native to Zero'},
+  {name:'USD₮0',symbol:'USDT0',price:1,change:null,balance:600,type:'crypto',demoLabel:'Ecosystem example'},
+  {name:'PayPal USD',symbol:'PYUSD',price:1,change:null,balance:250,type:'crypto',demoLabel:'Ecosystem example'},
+  {name:'Wrapped eETH',symbol:'weETH',price:3250,change:null,balance:0.2,type:'crypto',demoLabel:'Ecosystem example'},
+];
+assets.unshift(...zeroDemoAssets);
+const demoSwapTokens = zeroDemoAssets.map(asset=>asset.symbol);
+const portfolioRanges = ['1D','1W','1M','3M','1Y','ALL'];
+const demoStateKey='canopy-zero-state';
+let stored;
+try { stored=JSON.parse(localStorage.getItem(demoStateKey)); } catch {}
+const nonnegative=(value,fallback)=>Number.isFinite(value)&&value>=0 ? value : fallback;
+const state={
+  version:2,
+  balances:Object.fromEntries(zeroDemoAssets.map(asset=>[asset.symbol,nonnegative(stored?.balances?.[asset.symbol],asset.balance)])),
+  staked:nonnegative(stored?.version===2 ? stored.staked : null,240),
+  rewards:nonnegative(stored?.version===2 ? stored.rewards : null,12),
+  activity:Array.isArray(stored?.activity)?stored.activity:[],
+};
+let page='portfolio',range='1W',market='stocks',holdTab='assets',miniTab='stocks';
+const persist=()=>localStorage.setItem(demoStateKey,JSON.stringify(state));
+const icons={portfolio:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',markets:'<path d="M4 19V12m8 7V5m8 14V9"/>',swap:'<path d="M4 7h16l-4-4M20 17H4l4 4"/>',stake:'<path d="M12 3v18M3 12h18M5.5 5.5l13 13m0-13-13 13"/>',activity:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>'};
 icons.perps='<path d="M3 17l5-5 4 3 8-9M15 6h5v5"/>';
 icons.rewards='<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M3 10h18V7H3zM12 7v14M12 7c-6 0-6-5-2-4 2 0 2 4 2 4Zm0 0c6 0 6-5 2-4-2 0-2 4-2 4Z"/>';
-const names={portfolio:'Portfolio',markets:'Markets',swap:'Swap',bridge:'Bridge',stake:'Stake',perps:'Perps',rewards:'Rewards',activity:'Activity'};
+const names={portfolio:'Portfolio',markets:'Markets',swap:'Swap',stake:'Stake',perps:'Perps',rewards:'Rewards',activity:'Activity'};
 const mobilePrimary=['portfolio','markets','swap','activity'];
 function navIcon(pageName){return `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[pageName]}</svg>`}
 function nav(){
@@ -23,8 +44,8 @@ const chg=a=>a.change==null?'<span class="muted">Exchange chart</span>':`<span c
 function spark(seed=0,negative=false){let values=Array.from({length:26},(_,i)=>32-i*.65+Math.sin(i*1.9+seed)*6+Math.cos(i*.7+seed)*4);if(negative)values=values.map(v=>40-v);return `<svg class="sparkline" viewBox="0 0 100 45" preserveAspectRatio="none" aria-hidden="true"><path d="${values.map((v,i)=>(i?'L':'M')+(i*4)+','+v).join(' ')}" fill="none" stroke="${negative?'#f39a92':'var(--lime)'}" stroke-width="1.5"/></svg>`}
 function chart(seed=0){const values=Array.from({length:100},(_,i)=>159-i*1.1+Math.sin(i*.27+seed)*13+Math.sin(i*1.7)*5+Math.cos(i*.7)*7);const path=values.map((v,i)=>(i?'L':'M')+(i*7.4).toFixed(1)+','+v.toFixed(1)).join(' ');return `<svg viewBox="0 0 740 210" preserveAspectRatio="none" role="img" aria-label="Illustrative portfolio performance trending upward"><defs><linearGradient id="fill${seed}" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#c5f879" stop-opacity=".15"/><stop offset="1" stop-color="#c5f879" stop-opacity="0"/></linearGradient></defs>${[45,95,145,195].map(y=>`<line x1="0" x2="740" y1="${y}" y2="${y}" stroke="#ffffff08" stroke-dasharray="3 5"/>`).join('')}<path d="${path} L733 210 L0 210 Z" fill="url(#fill${seed})"/><path d="${path}" stroke="var(--lime)" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/><circle cx="732.6" cy="${values[99]}" r="4" fill="var(--lime)" stroke="#24321b" stroke-width="5"/></svg>`}
 function heading(title,sub,actions=''){return `<div class="page-heading"><div><h1>${title}</h1><p class="subtitle">${sub}</p></div><div class="buttons">${actions}</div></div>`}
-let watchlist;try{watchlist=JSON.parse(localStorage.getItem('canopy-zero-watchlist'))}catch{}if(!Array.isArray(watchlist))watchlist=['BTC','ETH','NVDA','DOGE'];let selectedSymbol='NVDA';
-const tvSymbols={BTC:'COINBASE:BTCUSD',ETH:'COINBASE:ETHUSD',SOL:'COINBASE:SOLUSD',USDC:'COINBASE:USDCUSD',NVDA:'NASDAQ:NVDA',TSLA:'NASDAQ:TSLA',AAPL:'NASDAQ:AAPL',DOGE:'BINANCE:DOGEUSDT',PEPE:'BINANCE:PEPEUSDT',WIF:'BINANCE:WIFUSDT',BONK:'BINANCE:BONKUSDT'};
+let watchlist;try{watchlist=JSON.parse(localStorage.getItem('canopy-zero-watchlist'))}catch{}if(!Array.isArray(watchlist))watchlist=['ZRO','USDT0','weETH'];let selectedSymbol='NVDA';
+const tvSymbols={ZRO:'COINBASE:ZROUSD',BTC:'COINBASE:BTCUSD',ETH:'COINBASE:ETHUSD',SOL:'COINBASE:SOLUSD',USDC:'COINBASE:USDCUSD',NVDA:'NASDAQ:NVDA',TSLA:'NASDAQ:TSLA',AAPL:'NASDAQ:AAPL',DOGE:'BINANCE:DOGEUSDT',PEPE:'BINANCE:PEPEUSDT',WIF:'BINANCE:WIFUSDT',BONK:'BINANCE:BONKUSDT'};
 Object.assign(tvSymbols,{"XRP": "BINANCE:XRPUSDT", "ADA": "BINANCE:ADAUSDT", "AVAX": "BINANCE:AVAXUSDT", "LINK": "BINANCE:LINKUSDT", "DOT": "BINANCE:DOTUSDT", "LTC": "BINANCE:LTCUSDT", "BCH": "BINANCE:BCHUSDT", "UNI": "BINANCE:UNIUSDT", "AAVE": "BINANCE:AAVEUSDT", "NEAR": "BINANCE:NEARUSDT", "SUI": "BINANCE:SUIUSDT", "ARB": "BINANCE:ARBUSDT", "OP": "BINANCE:OPUSDT", "MSFT": "NASDAQ:MSFT", "AMZN": "NASDAQ:AMZN", "GOOGL": "NASDAQ:GOOGL", "META": "NASDAQ:META", "NFLX": "NASDAQ:NFLX", "AMD": "NASDAQ:AMD", "INTC": "NASDAQ:INTC", "COIN": "NASDAQ:COIN", "PLTR": "NASDAQ:PLTR", "MSTR": "NASDAQ:MSTR", "JPM": "NYSE:JPM", "V": "NYSE:V", "DIS": "NYSE:DIS", "WMT": "NASDAQ:WMT", "UBER": "NYSE:UBER", "SPY": "AMEX:SPY"});
 function liveChart(symbol, id, market = tvSymbols[symbol]) {
   if (!market) {
@@ -63,44 +84,67 @@ function hydrateCharts() {
   });
 }
 function portfolio(){
- const total=assets.reduce((s,a)=>s+(state.balances[a.symbol]||0)*a.price,0)+state.staked+state.rewards;
- const held=assets.filter(a=>state.balances[a.symbol]>0),stockValue=held.filter(a=>a.type==='stocks').reduce((n,a)=>n+state.balances[a.symbol]*a.price,0);
- const split=[['Crypto',total-stockValue-state.balances.USDC,'var(--lime)'],['Stocks',stockValue,'#9a9da5'],['Cash',state.balances.USDC,'#d7d9db']];
- return heading('Portfolio','All your assets, in one place.',`<button class="secondary" data-action="send">Send</button><button class="primary" data-action="deposit">Add funds</button>`)+`
- <div class="overview-layout"><section class="balance-panel"><div class="card-top"><div class="section-tabs"><button class="active">Overview</button><button data-go="markets">Market charts</button></div><span class="tag">Sample portfolio</span></div><div class="label balance-label">Total balance</div><div class="big-number">${money(total).split('.')[0]}<span class="cents">.${money(total).split('.')[1]}</span></div><div class="change" id="portfolio-change">+$2,184.32 <strong>(2.66%)</strong><span>past week · sample</span></div><div class="chart-wrap" id="portfolio-chart">${chart(2)}</div><div class="chart-foot"><span id="chart-date">NOV 11</span><div class="ranges">${['1D','1W','1M','3M','1Y','ALL'].map(r=>`<button class="${r===range?'active':''}" data-range="${r}">${r}</button>`).join('')}</div><span>NOV 18</span></div><div class="stat-row"><div><span class="label">Buying power</span><div class="value">${money(state.balances.USDC)}</div></div><div><span class="label">Staked</span><div class="value">${money(state.staked)}</div></div><div><span class="label">Rewards</span><div class="value positive">${money(state.rewards)}</div></div></div></section>
- <aside class="portfolio-rail"><section class="allocation-block"><div class="card-top"><h2>Allocation</h2><span class="tag">${held.length} assets</span></div><div class="allocation-bar">${split.map(([n,v,c])=>`<span style="width:${v/total*100}%;background:${c}" title="${n}"></span>`).join('')}</div>${split.map(([n,v,c])=>`<div class="allocation-item"><span><i style="background:${c}"></i>${n}</span><b>${(v/total*100).toFixed(1)}%</b></div>`).join('')}</section><section class="watchlist"><div class="card-top"><h2>Watchlist</h2><button class="quiet" data-go="markets">Edit</button></div>${assets.filter(a=>watchlist.includes(a.symbol)).map((a,i)=>`<button class="watch-row" data-asset="${a.symbol}">${coin(a)}<span>${a.symbol}<small>${a.name}</small></span><span class="watch-price">${money(a.price,a.price<.01?7:2)}<small>${chg(a)}</small></span></button>`).join('')||'<p class="form-note">Pin assets from Markets to build your watchlist.</p>'}<span class="data-caption">Sample quotes · Select for market chart</span></section></aside></div>
- <section class="discovery"><div class="card-top"><h2>On your radar</h2><div class="section-tabs"><button class="${miniTab==='stocks'?'active':''}" data-mini="stocks">Stocks</button><button class="${miniTab==='memes'?'active':''}" data-mini="memes">Memes</button></div></div><div class="discovery-grid">${assets.filter(a=>a.type===miniTab).slice(0,4).map((a,i)=>`<button class="discovery-tile tile-${i}" data-asset="${a.symbol}"><div class="token-art">${coin(a)}</div><div class="tile-info"><strong>${a.name}</strong>${chg(a)}</div><div class="tile-meta">${a.symbol}<span>Open market chart</span></div></button>`).join('')}</div></section>
- <section class="holdings"><div class="card-top"><div class="section-tabs"><button data-hold="assets" class="${holdTab==='assets'?'active':''}">Holdings <span class="count">${held.length}</span></button><button data-hold="activity" class="${holdTab==='activity'?'active':''}">Recent activity</button></div><span class="data-caption">Sample balances and prices</span></div>${holdTab==='activity'?activityRows():`<table><thead><tr><th>Asset</th><th class="price-col">Price</th><th>24h</th><th>Balance</th></tr></thead><tbody>${held.map((a,i)=>`<tr><td><button class="quiet asset-button" data-asset="${a.symbol}">${assetName(a)}</button></td><td class="price-col">${money(a.price)}</td><td>${chg(a)}</td><td>${money(a.price*state.balances[a.symbol])}<small>${num(state.balances[a.symbol])} ${a.symbol}</small></td></tr>`).join('')}</tbody></table>`}</section>`;
+  const held=zeroDemoAssets.filter(asset=>state.balances[asset.symbol]>0);
+  const total=held.reduce((sum,asset)=>sum+state.balances[asset.symbol]*asset.price,0)+(state.staked+state.rewards)*zeroDemoAssets[0].price;
+  const allocation=zeroDemoAssets.map((asset,index)=>{
+    const units=state.balances[asset.symbol]+(asset.symbol==='ZRO'?state.staked+state.rewards:0);
+    return {symbol:asset.symbol,value:units*asset.price,color:['var(--lime)','#58a6a5','#778bce','#a89bdd'][index]};
+  }).filter(asset=>asset.value>0);
+  const [dollars,cents]=money(total).split('.');
+  return heading('Portfolio','Your Zero demo holdings and staking positions.')+`
+  <div class="overview-layout">
+    <section class="balance-panel">
+      <div class="card-top"><h2>Overview</h2><span class="tag">Zero · Demo</span></div>
+      <div class="label balance-label">Estimated portfolio value</div><div class="big-number">${dollars}<span class="cents">.${cents}</span></div>
+      <p class="data-caption portfolio-history-label">Illustrative portfolio history</p>
+      <div class="chart-wrap" id="portfolio-chart">${chart(portfolioRanges.indexOf(range))}</div>
+      <div class="chart-foot"><div class="ranges" aria-label="Portfolio chart range">${portfolioRanges.map(r=>`<button class="${r===range?'active':''}" data-range="${r}" aria-pressed="${r===range}">${r}</button>`).join('')}</div></div>
+      <div class="stat-row zero-stats"><div><span class="label">Staked</span><div class="value">${num(state.staked)} ZRO</div></div><div><span class="label">Rewards</span><div class="value positive">${num(state.rewards)} ZRO</div></div></div>
+    </section>
+    <aside class="portfolio-rail">
+      <section class="allocation-block"><div class="card-top"><h2>Allocation</h2><span class="tag">${allocation.length} assets</span></div>
+        ${allocation.length?`<div class="allocation-bar">${allocation.map(asset=>`<span style="width:${asset.value/total*100}%;background:${asset.color}" title="${asset.symbol}"></span>`).join('')}</div>${allocation.map(asset=>`<div class="allocation-item"><span><i style="background:${asset.color}"></i>${asset.symbol}</span><b>${(asset.value/total*100).toFixed(1)}%</b></div>`).join('')}`:'<p class="form-note">No demo holdings yet.</p>'}
+      </section>
+      <section class="watchlist"><div class="card-top"><h2>Watchlist</h2><button class="quiet" data-go="markets">Edit</button></div>
+        ${zeroDemoAssets.filter(asset=>watchlist.includes(asset.symbol)).map(asset=>`<button class="watch-row" data-asset="${asset.symbol}">${coin(asset)}<span>${asset.symbol}<small>${asset.name}</small></span><span class="watch-price">${money(asset.price)}</span></button>`).join('')||'<p class="form-note">Pin demo tokens from Markets to follow them here.</p>'}<span class="data-caption">Sample prices</span>
+      </section>
+    </aside>
+  </div>
+  <section class="holdings">
+    <div class="card-top"><div class="section-tabs"><button data-hold="assets" class="${holdTab==='assets'?'active':''}">Holdings <span class="count">${held.length}</span></button><button data-hold="activity" class="${holdTab==='activity'?'active':''}">Recent activity</button></div><span class="data-caption">Sample balances</span></div>
+    ${holdTab==='activity'?activityRows():`<table><thead><tr><th>Asset</th><th class="price-col">Sample price</th><th>Balance</th></tr></thead><tbody>${held.map(asset=>`<tr><td><button class="quiet asset-button" data-asset="${asset.symbol}">${assetName(asset)}</button></td><td class="price-col">${money(asset.price)}</td><td>${money(asset.price*state.balances[asset.symbol])}<small>${num(state.balances[asset.symbol])} ${asset.symbol}</small></td></tr>`).join('')}</tbody></table>`}
+    ${holdTab==='assets'?'<p class="form-note">ZRO is native to Zero. The other holdings are LayerZero ecosystem examples with simulated balances.</p>':''}
+  </section>`;
 }
-const tradeTokens = ['ETH', 'USDC', 'SOL', 'BTC'];
-const bridgeNetworks = ['Ethereum', 'Zero (demo)', 'Arbitrum', 'Base'];
-const swapMarkets = {
-  'ETH/USDC': 'BINANCE:ETHUSDC',
-  'SOL/USDC': 'BINANCE:SOLUSDC',
-  'BTC/USDC': 'BINANCE:BTCUSDC',
-  'ETH/BTC': 'BINANCE:ETHBTC',
-  'SOL/BTC': 'BINANCE:SOLBTC',
-  'SOL/ETH': 'BINANCE:SOLETH'
-};
+
+function marketRadar(){
+  const choices=[['stocks','Stocks'],['memes','Memes']];
+  return `<section class="discovery market-radar" aria-labelledby="radar-title"><div class="card-top"><h2 id="radar-title">On your radar</h2><div class="section-tabs">${choices.map(([type,label])=>`<button class="${miniTab===type?'active':''}" data-mini="${type}" aria-pressed="${miniTab===type}">${label}</button>`).join('')}</div></div><div class="discovery-grid">${assets.filter(asset=>asset.type===miniTab).slice(0,4).map((asset,index)=>`<button class="discovery-tile tile-${index}" data-asset="${asset.symbol}"><div class="token-art">${coin(asset)}</div><div class="tile-info"><strong>${asset.name}</strong>${chg(asset)}</div><div class="tile-meta">${asset.symbol}<span>Open market chart</span></div></button>`).join('')}</div></section>`;
+}
+let tradeMode = 'swap';
+const bridgeTokens = ['ZRO'];
+const bridgeNetworks = ['Ethereum', 'Zero (demo)'];
 const tradeDrafts = {
-  swap: {from: 'ETH', to: 'USDC', amount: '1', chartOpen: true},
-  bridge: {from: 'USDC', to: 'USDC', amount: '100', source: 'Ethereum', destination: 'Zero (demo)'}
+  swap: {from: 'ZRO', to: 'USDT0', amount: '1', chartOpen: true},
+  bridge: {from: 'ZRO', to: 'ZRO', amount: '100', source: 'Ethereum', destination: 'Zero (demo)'}
 };
 
 function tradeOptions(items, selected) {
   return items.map(item => `<option ${item === selected ? 'selected' : ''}>${item}</option>`).join('');
 }
 
-function demoTrade(bridge = false) {
-  const draft = tradeDrafts[bridge ? 'bridge' : 'swap'];
-  const action = bridge ? 'bridge' : 'swap';
-  const subtitle = bridge ? 'Explore how an asset transfer would work.' : 'Try a swap with sample balances.';
-  return heading(bridge ? 'Bridge' : 'Swap', subtitle, '<span class="tag">Demo Mode</span>') + `
+function demoTrade() {
+  const action = tradeMode;
+  const bridge = action === 'bridge';
+  const draft = tradeDrafts[action];
+  const tokens = bridge ? bridgeTokens : demoSwapTokens;
+  const subtitle = bridge ? 'Preview a ZRO transfer between Ethereum and Zero.' : 'Try a swap with sample LayerZero ecosystem assets.';
+  return heading('Swap', subtitle, '<span class="tag">Demo Mode</span>') + `
     <div class="page-grid">
       <section class="card trade-card">
-        <div class="trade-tabs">
-          <a href="#swap" class="${!bridge ? 'active' : ''}">Swap</a>
-          <a href="#bridge" class="${bridge ? 'active' : ''}">Bridge</a>
+        <div class="trade-tabs" role="group" aria-label="Trade mode">
+          <a href="#swap" ${bridge ? '' : 'class="active" aria-current="page"'}>Swap</a>
+          <a href="#swap/bridge" ${bridge ? 'class="active" aria-current="page"' : ''}>Bridge</a>
         </div>
         ${bridge ? `<div class="network-row">
           <label>From network<select class="network-select" id="from-network">${tradeOptions(bridgeNetworks, draft.source)}</select></label>
@@ -111,7 +155,7 @@ function demoTrade(bridge = false) {
           <div class="amount-row">
             <input aria-label="Amount to ${action}" id="amount" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00">
             <span id="pay-token-logo" class="inline-token"></span>
-            <select aria-label="Pay asset" id="from-asset">${tradeOptions(tradeTokens, draft.from)}</select>
+            <select aria-label="Pay asset" id="from-asset">${tradeOptions(tokens, draft.from)}</select>
           </div>
           <div class="field-bottom"><span id="pay-usd"></span><button id="max">Use max</button></div>
         </div>
@@ -123,7 +167,7 @@ function demoTrade(bridge = false) {
           <div class="amount-row">
             <input aria-label="Estimated received amount" id="receive" readonly>
             <span id="receive-token-logo" class="inline-token"></span>
-            <select aria-label="Receive asset" id="to-asset" ${bridge ? 'disabled' : ''}>${tradeOptions(tradeTokens, draft.to)}</select>
+            <select aria-label="Receive asset" id="to-asset" ${bridge ? 'disabled' : ''}>${tradeOptions(tokens, draft.to)}</select>
           </div>
           <div class="field-bottom"><span id="receive-usd"></span><span>${bridge ? 'Same wallet address' : 'Includes demo fee'}</span></div>
         </div>
@@ -133,7 +177,7 @@ function demoTrade(bridge = false) {
           <div><span>Network fee</span><b>Illustrative · $0.08</b></div>
         </div>
         <button class="primary full" id="review-trade">Review demo ${action}</button>
-        <p class="form-note">Demo ${bridge ? 'transfer' : 'quote'} · No wallet signature or real funds.</p>
+        <p class="form-note">${bridge ? 'Simulated transfer. No ZRO moves.' : 'ZRO is Zero’s native token. Other tokens are ecosystem examples and their availability on Zero is unverified.'}</p>
       </section>
       <section class="trade-context">
         ${bridge ? `<div class="card route-panel">
@@ -160,8 +204,8 @@ function demoTrade(bridge = false) {
 }
 
 function mountDemoTrade() {
-  const bridge = page === 'bridge';
-  const draft = tradeDrafts[page];
+  const bridge = tradeMode === 'bridge';
+  const draft = tradeDrafts[tradeMode];
   const from = $('#from-asset');
   const to = $('#to-asset');
   const amount = $('#amount');
@@ -213,17 +257,30 @@ function updateSwapChart(from, to) {
   panel.dataset.pair = key;
   const pair = `${from} / ${to}`;
   $('#swap-pair').innerHTML = `<span class="swap-pair-logos">${CanopyUI.token(from)}${CanopyUI.token(to)}</span><span>${pair}</span>`;
-  $('#swap-chart-content').innerHTML = liveChart(pair, 'swap-chart', swapMarkets[key]);
+  const reference = !tvSymbols[pair] && [from,to].includes('ZRO')
+    ? '<div class="chart-source"><a href="https://www.kraken.com/prices/layerzero" target="_blank" rel="noopener">View external ZRO / USD reference</a></div>'
+    : '';
+  $('#swap-chart-content').innerHTML = liveChart(pair, 'swap-chart') + reference;
   hydrateCharts();
 }
 
 function bridgeNetworkIcon(network) {
-  if (network === 'Zero (demo)') return '<span class="coin asset-logo"><img src="favicon.svg" alt=""></span>';
+  if (network === 'Zero (demo)') return CanopyUI.token('ZRO');
   return CanopyUI.network(network);
 }
-function markets(){return heading('Markets','Price action, watchlists, and what’s moving.',`<span class="tag">Charts powered by TradingView</span>`)+`<div class="market-controls"><div class="segments">${[['stocks','Stocks'],['crypto','Crypto'],['memes','Trending memes']].map(([v,n])=>`<button class="${market===v?'active':''}" data-market="${v}">${n}</button>`).join('')}</div><input class="search" id="search" aria-label="Search markets" placeholder="Search name or symbol"></div><section class="market-terminal"><div class="market-sidebar"><div class="card-top"><h2>${market==='memes'?'Meme watch':market==='stocks'?'Stock watch':'Crypto watch'}</h2><span class="data-caption">Sample list</span></div><div id="market-rows">${marketRows('')}</div></div><div class="market-chart-panel"><div class="card-top"><h2 id="selected-market">${coin(assets.find(a=>a.symbol===selectedSymbol))}${selectedSymbol} / ${market==='memes'?'USDT':'USD'}</h2><span class="data-caption">Exchange data · May be delayed</span></div><div id="market-live">${liveChart(selectedSymbol,'markets-chart')}</div></div></section><div class="market-bottom"><span>★ Pin assets to your portfolio watchlist.</span><span>Quotes in this list are samples. Open a chart for exchange data.</span></div>`}
-function marketRows(q){let list=assets.filter(a=>a.type===market&&`${a.name} ${a.symbol}`.toLowerCase().includes(q.toLowerCase()));return list.length?list.map(a=>`<div class="market-row ${selectedSymbol===a.symbol?'selected':''}"><button class="pin ${watchlist.includes(a.symbol)?'pinned':''}" data-pin="${a.symbol}" aria-label="${watchlist.includes(a.symbol)?'Unpin':'Pin'} ${a.name}">${watchlist.includes(a.symbol)?'★':'☆'}</button><button class="market-select" data-select-market="${a.symbol}">${assetName(a)}<span>${money(a.price,a.price<.01?7:2)}<small>${chg(a)}</small></span></button></div>`).join(''):'<div class="empty">No matching assets.</div>'}
-function stake(){return heading('Staking preview','Try staking with sample balances in Demo Mode.')+`<div class="staking-hero"><section class="card staking-total"><div class="label">Your staked balance</div><div class="big-number">${money(state.staked)}</div><div class="change">✳ &nbsp; Earning across your demo positions</div><div class="stat-row"><div><span class="label">Rewards available</span><div class="value">${money(state.rewards)}</div></div><div><span class="label">Illustrative APY</span><div class="value">4.80%</div></div><div><button class="secondary" data-action="claim" ${state.rewards<=0?'disabled':''}>Claim rewards</button></div></div></section><section class="card earn-card"><div class="label">Position overview</div><h2>3 strategies.<br>One place to manage them.</h2><p>Compare estimated yields and unstaking periods. All positions below are simulated.</p></section></div><div class="card-top" style="margin:30px 0 20px"><h2>Explore staking</h2><span class="tag">Demo opportunities</span></div><div class="staking-cards">${[['ETH','3.8','~5 days'],['SOL','6.4','~3 days'],['BTC','2.2','~7 days']].map(([s,r,u])=>{let a=assets.find(x=>x.symbol===s);return `<section class="card staking-card">${assetName(a)}<div><div class="apy">${r}<span style="font-size:20px">%</span></div><p>Illustrative annual yield</p></div><p style="margin-top:20px">${s==='BTC'?'Wrapped BTC strategy':'Network staking'}<br>Unstaking: ${u}<br>Demo balance: ${num(state.balances[s])} ${s}</p><button class="secondary" data-stake="${s}">Stake ${s}</button></section>`}).join('')}</div><p class="form-note">Illustrative rates only. Strategies are not connected to protocols; no returns are promised.</p>`}
+function markets(){return heading('Markets','Price action, watchlists, and what’s moving.',`<span class="tag">Charts powered by TradingView</span>`)+marketRadar()+`<div class="market-controls"><div class="segments">${[['stocks','Stocks'],['crypto','Crypto'],['memes','Trending memes']].map(([v,n])=>`<button class="${market===v?'active':''}" data-market="${v}">${n}</button>`).join('')}</div><input class="search" id="search" aria-label="Search markets" placeholder="Search name or symbol"></div><section class="market-terminal"><div class="market-sidebar"><div class="card-top"><h2>${market==='memes'?'Meme watch':market==='stocks'?'Stock watch':'Crypto watch'}</h2><span class="data-caption">Sample list</span></div><div id="market-rows">${marketRows('')}</div></div><div class="market-chart-panel"><div class="card-top"><h2 id="selected-market">${marketChartTitle(selectedSymbol)}</h2><span class="data-caption">Exchange data · May be delayed</span></div><div id="market-live">${liveChart(selectedSymbol,'markets-chart')}</div></div></section><div class="market-bottom"><span>★ Pin demo tokens to your portfolio watchlist.</span><span>Quotes in this list are samples. Open a chart for exchange data.</span></div>`}
+function marketChartTitle(symbol){
+  const asset=assets.find(item=>item.symbol===symbol);
+  const quote=tvSymbols[symbol]?.endsWith('USDT')?'USDT':'USD';
+  return coin(asset)+(tvSymbols[symbol]&&asset.type!=='stocks'?`${symbol} / ${quote}`:symbol);
+}
+function marketRows(q){let list=assets.filter(a=>a.type===market&&`${a.name} ${a.symbol}`.toLowerCase().includes(q.toLowerCase()));return list.length?list.map(a=>`<div class="market-row ${selectedSymbol===a.symbol?'selected':''}"><button class="pin ${watchlist.includes(a.symbol)?'pinned':''}" data-pin="${a.symbol}" aria-label="${watchlist.includes(a.symbol)?'Unpin':'Pin'} ${a.name}">${watchlist.includes(a.symbol)?'★':'☆'}</button><button class="market-select" data-select-market="${a.symbol}">${assetName(a)}<span>${a.demoLabel?a.demoLabel:money(a.price,a.price<.01?7:2)}<small>${a.demoLabel?(tvSymbols[a.symbol]?'Exchange chart':'No chart data'):chg(a)}</small></span></button></div>`).join(''):'<div class="empty">No matching assets.</div>'}
+function stake(){
+  const zro=zeroDemoAssets[0];
+  return heading('Stake','Try delegating sample ZRO in Demo Mode.')+`
+  <div class="staking-hero"><section class="card staking-total"><div class="label">Your staked balance</div><div class="big-number">${num(state.staked)} ZRO</div><div class="stat-row zero-stats"><div><span class="label">Demo rewards</span><div class="value">${num(state.rewards)} ZRO</div></div><div><button class="secondary" data-action="claim" ${state.rewards<=0?'disabled':''}>Claim demo rewards</button></div></div></section>
+  <section class="card staking-card">${assetName(zro)}<h2>Delegate ZRO</h2><p>Available in demo: ${num(state.balances.ZRO)} ZRO</p><button class="secondary" data-stake="ZRO" ${state.balances.ZRO<=0?'disabled':''}>Stake demo ZRO</button></section></div>`;
+}
 function activityRows(kind){const events=state.activity.filter(entry=>!kind||entry.type===kind);return events.length?events.slice().reverse().map(a=>`<div class="activity-row"><span class="coin">${a.type==='Swap'?'⇄':a.type==='Stake'?'✳':'◈'}</span><div>${a.type}<small>${a.detail}</small></div><span class="positive">Simulated<small>${a.time}</small></span></div>`).join(''):'<div class="empty"><div style="font-size:30px;margin-bottom:14px">◷</div>No moves yet.<small>Your demo swaps, bridges, and staking activity will appear here.</small></div>'}
 function activity(){return heading('Activity','History of your simulated transfers, swaps, and staking.')+`<section class="card activity-card">${activityRows()}</section>`}
 function comingSoon(section){
@@ -235,21 +292,22 @@ function comingSoon(section){
 }
 function render(){
   range='1W';
-  const fragment=location.hash.slice(1).split('/')[0];
-  // Keep the submitted #testnet URL working without changing its address.
-  const route=fragment==='testnet'?'swap':fragment;
+  const [fragment, mode] = location.hash.slice(1).split('/');
+  // The submitted #testnet and older #bridge URLs still open the trade workspace.
+  const route = fragment === 'testnet' || fragment === 'bridge' ? 'swap' : fragment;
+  tradeMode = fragment === 'bridge' || (fragment === 'swap' && mode === 'bridge') ? 'bridge' : 'swap';
   page=Object.hasOwn(names,route)?route:'portfolio';
   nav();
-  const views={portfolio,markets,swap:()=>demoTrade(false),bridge:()=>demoTrade(true),stake,perps:()=>comingSoon('perps'),rewards:()=>comingSoon('rewards'),activity};
+  const views={portfolio,markets,swap:demoTrade,stake,perps:()=>comingSoon('perps'),rewards:()=>comingSoon('rewards'),activity};
   $('#main').innerHTML=views[page]();
-  if(page==='swap'||page==='bridge') mountDemoTrade();
+  if(page==='swap') mountDemoTrade();
   if(page==='markets') $('#search').oninput=e=>$('#market-rows').innerHTML=marketRows(e.target.value);
   hydrateCharts();
   CanopyUI.enter($('#main'));
 }
 function updateQuote() {
-  const bridge = page === 'bridge';
-  const draft = tradeDrafts[page];
+  const bridge = tradeMode === 'bridge';
+  const draft = tradeDrafts[tradeMode];
   const from = $('#from-asset').value;
   const fromAsset = assets.find(asset => asset.symbol === from);
   if (bridge) {
@@ -288,7 +346,7 @@ function updateQuote() {
   }
   const review = $('#review-trade');
   review.disabled = Boolean(error);
-  review.textContent = error || `Review demo ${page}`;
+  review.textContent = error || `Review demo ${tradeMode}`;
 }
 
 function showModal(html){$('#modal').classList.remove('chart-modal');$('#modal-content').innerHTML=`<button class="close" aria-label="Close dialog">×</button>${html}`;$('#modal').showModal();CanopyUI.enter($('#modal-content'));$('.close').onclick=()=>$('#modal').close()}
@@ -300,7 +358,7 @@ function reviewTrade() {
     toast('A demo transaction is already in progress.');
     return;
   }
-  const action = page;
+  const action = tradeMode;
   const bridge = action === 'bridge';
   const from = $('#from-asset').value;
   const to = $('#to-asset').value;
@@ -351,17 +409,71 @@ function reviewTrade() {
     }
   };
 }
-function assetDetail(symbol){const a=assets.find(a=>a.symbol===symbol);showModal(`<div class="asset-name" style="margin-bottom:22px">${coin(a)}<div><h2 style="margin:0">${a.name}</h2><small>${a.symbol} · Exchange market chart</small></div></div>${liveChart(symbol,'detail-chart')}<p>Chart quotes come from TradingView and may be delayed by exchange. Your demo balances use sample prices.</p><div class="modal-actions"><button class="secondary" data-pin="${symbol}">${watchlist.includes(symbol)?'Remove from watchlist':'Add to watchlist'}</button>${['ETH','BTC','SOL','USDC'].includes(symbol)?'<button class="primary" id="trade-asset">Open swap</button>':''}</div>`);$('#modal').classList.add('chart-modal');hydrateCharts();if($('#trade-asset'))$('#trade-asset').onclick=()=>{$('#modal').close();location.hash='swap'}}
-function stakeModal(s){const a=assets.find(a=>a.symbol===s);showModal(`<div class="modal-icon">✳</div><h2>Stake ${s}</h2><p>This simulation moves assets from your available balance to your staked total.</p><label class="modal-label" for="stake-amount">Amount · Available ${num(state.balances[s])} ${s}</label><input class="modal-input" type="number" min="0" step="any" id="stake-amount" value="${Math.min(1,state.balances[s])}"><p id="stake-error" class="negative"></p><button class="primary full" id="confirm-stake">Simulate stake</button>`);$('#confirm-stake').onclick=()=>{let amount=Number($('#stake-amount').value);if(!Number.isFinite(amount)||amount<=0||amount>state.balances[s]){$('#stake-error').textContent='Enter an amount within your available balance.';return}state.balances[s]-=amount;state.staked+=amount*a.price;log('Stake',`${num(amount)} ${s}`);$('#modal').close();render();toast(`${num(amount)} ${s} staked in demo`)}}
-function funds(action){showModal(`<div class="modal-icon">◈</div><h2>${action==='send'?'Send demo funds':'Add demo funds'}</h2><p>${action==='send'?'Simulate a USDC transfer to an address.':'Top up your demo USDC balance to explore Canopy.'} No real money moves.</p>${action==='send'?'<label class="modal-label" for="recipient">Recipient address</label><input class="modal-input" id="recipient" placeholder="0x…">':''}<label class="modal-label" for="fund-amount">Amount in USDC</label><input class="modal-input" id="fund-amount" type="number" min="0" value="1000"><p id="fund-error"></p><button class="primary full" id="confirm-fund">${action==='send'?'Simulate send':'Add demo USDC'}</button>`);$('#confirm-fund').onclick=()=>{let a=Number($('#fund-amount').value);if(!Number.isFinite(a)||a<=0||a>1e8||(action==='send'&&a>state.balances.USDC)){$('#fund-error').textContent='Enter a valid amount within your balance and demo limits.';return}if(action==='send'&&!/^0x[a-fA-F0-9]{40}$/.test($('#recipient').value)){$('#fund-error').textContent='Enter a valid 42-character EVM address.';return}state.balances.USDC+=action==='send'?-a:a;log(action==='send'?'Send':'Deposit',`${num(a)} USDC`);$('#modal').close();render();toast('Demo balance updated')}}
-document.addEventListener('click',e=>{const b=e.target.closest('button, tr[data-asset]');if(!b)return;if(b.dataset.go)location.hash=b.dataset.go;if(b.dataset.range){range=b.dataset.range;document.querySelectorAll('[data-range]').forEach(el=>el.classList.toggle('active',el.dataset.range===range));$('#portfolio-chart').innerHTML=chart(['1D','1W','1M','3M','1Y','ALL'].indexOf(range));let labels={'1D':['+$486.28 (0.58%)','today','00:00'],'1W':['+$2,184.32 (2.66%)','this week','NOV 11'],'1M':['+$6,831.43 (8.81%)','this month','OCT 18'],'3M':['+$12,251.80 (17.02%)','past 3 months','AUG 18'],'1Y':['+$24,384.17 (40.63%)','this year','NOV 2025'],'ALL':['+$31,844.20 (60.78%)','all time','JUN 2024']}[range];$('#portfolio-change').innerHTML=`<svg class="outbound-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11 11 5M5 5h6v6"/></svg> &nbsp;${labels[0]} <span>${labels[1]}</span>`;$('#chart-date').textContent=labels[2]}if(b.dataset.market){market=b.dataset.market;selectedSymbol=assets.find(a=>a.type===market).symbol;render()}if(b.dataset.hold){holdTab=b.dataset.hold;render()}if(b.dataset.mini){miniTab=b.dataset.mini;render()}if(b.dataset.asset)assetDetail(b.dataset.asset);if(b.dataset.detailRange){$('#modal').close();assetDetail(b.dataset.symbol,b.dataset.detailRange)}if(b.dataset.stake)stakeModal(b.dataset.stake);if(['send','deposit'].includes(b.dataset.action))funds(b.dataset.action);if(b.dataset.action==='claim'){showModal(`<div class="modal-icon">✳</div><h2>Claim your demo rewards</h2><p>Move ${money(state.rewards)} in illustrative rewards into your available USDC balance.</p><button class="primary full" id="confirm-claim">Simulate claim</button>`);$('#confirm-claim').onclick=()=>{let rewards=state.rewards;state.balances.USDC+=rewards;state.rewards=0;log('Claim',`${money(rewards)} USDC rewards`);$('#modal').close();render();toast('Demo rewards claimed')}}});
+function assetDetail(symbol){
+  const asset=assets.find(item=>item.symbol===symbol);
+  if(!asset)return;
+  const inDemo=demoSwapTokens.includes(symbol);
+  showModal(`<div class="asset-name" style="margin-bottom:22px">${coin(asset)}<div><h2 style="margin:0">${asset.name}</h2><small>${symbol}${asset.demoLabel?' · '+asset.demoLabel:''}</small></div></div>${liveChart(symbol,'detail-chart')}<div class="modal-actions"><button class="secondary" data-pin="${symbol}">${watchlist.includes(symbol)?'Remove from watchlist':'Add to watchlist'}</button>${inDemo?'<button class="primary" id="trade-asset">Open swap</button>':''}</div>`);
+  $('#modal').classList.add('chart-modal');
+  hydrateCharts();
+  if(inDemo)$('#trade-asset').onclick=()=>{
+    tradeDrafts.swap.from=symbol;
+    if(tradeDrafts.swap.to===symbol) tradeDrafts.swap.to=demoSwapTokens.find(token=>token!==symbol);
+    $('#modal').close();
+    location.hash='swap';
+  };
+}
+function stakeModal(symbol){
+  if(symbol!=='ZRO')return;
+  showModal(`<h2>Stake demo ZRO</h2><p>Move sample ZRO from your available balance to your staked total.</p><label class="modal-label" for="stake-amount">Amount · Available ${num(state.balances.ZRO)} ZRO</label><input class="modal-input" type="number" min="0" step="any" id="stake-amount" value="${Math.min(1,state.balances.ZRO)}"><p id="stake-error" class="negative" role="status"></p><button class="primary full" id="confirm-stake">Simulate stake</button>`);
+  $('#confirm-stake').onclick=()=>{
+    const amount=Number($('#stake-amount').value);
+    if(!Number.isFinite(amount)||amount<=0||amount>state.balances.ZRO){$('#stake-error').textContent='Enter an amount within your available balance.';return;}
+    state.balances.ZRO-=amount;
+    state.staked+=amount;
+    log('Stake',`${num(amount)} ZRO`);
+    $('#modal').close();render();toast(`${num(amount)} ZRO staked in demo`);
+  };
+}
+function claimDemoRewards(){
+  if(state.rewards<=0)return;
+  showModal(`<h2>Claim your demo rewards</h2><p>Move ${num(state.rewards)} sample ZRO to your available balance.</p><button class="primary full" id="confirm-claim">Simulate claim</button>`);
+  $('#confirm-claim').onclick=()=>{
+    const rewards=state.rewards;
+    state.balances.ZRO+=rewards;
+    state.rewards=0;
+    log('Claim',`${num(rewards)} ZRO rewards`);
+    $('#modal').close();render();toast('Demo rewards claimed');
+  };
+}
+document.addEventListener('click',event=>{
+  const button=event.target.closest('button, tr[data-asset]');
+  if(!button)return;
+  const action=button.dataset;
+  if(action.go)location.hash=action.go;
+  if(action.range){
+    range=action.range;
+    document.querySelectorAll('[data-range]').forEach(element=>{
+      const active=element.dataset.range===range;
+      element.classList.toggle('active',active);
+      element.setAttribute('aria-pressed',String(active));
+    });
+    $('#portfolio-chart').innerHTML=chart(portfolioRanges.indexOf(range));
+  }
+  if(action.market){market=action.market;selectedSymbol=assets.find(asset=>asset.type===market).symbol;render();}
+  if(action.hold){holdTab=action.hold;render();}
+  if(action.mini){miniTab=action.mini;render();}
+  if(action.asset)assetDetail(action.asset);
+  if(action.stake)stakeModal(action.stake);
+  if(action.action==='claim')claimDemoRewards();
+});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('tr[data-asset]'))assetDetail(e.target.dataset.asset)});
-$('#reset').onclick=()=>{showModal('<h2>Start fresh?</h2><p>This resets only your local demo balances and simulated activity.</p><button class="primary full" id="confirm-reset">Reset demo</button>');$('#confirm-reset').onclick=()=>{localStorage.removeItem('canopy-zero-state');location.reload()}};
+$('#reset').onclick=()=>{showModal('<h2>Start fresh?</h2><p>This resets only your local demo balances and simulated activity.</p><button class="primary full" id="confirm-reset">Reset demo</button>');$('#confirm-reset').onclick=()=>{localStorage.removeItem(demoStateKey);location.reload()}};
 function setTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('canopy-zero-theme',theme);$('#appearance').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').title=`Switch to ${theme==='light'?'dark':'light'} mode`;$('#mobile-theme').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;$('#mobile-theme').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;document.querySelectorAll('[data-tv]').forEach(el=>{delete el.dataset.loaded;el.innerHTML=''});hydrateCharts()}
 $('#mobile-theme').onclick=()=>$('#appearance').click();
 $('#appearance').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 $('#global-search').onclick=()=>{location.hash='markets';render();$('#search').focus()};
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();$('#global-search').click()}});
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.pin){const symbol=b.dataset.pin;watchlist=watchlist.includes(symbol)?watchlist.filter(x=>x!==symbol):[...watchlist,symbol];localStorage.setItem('canopy-zero-watchlist',JSON.stringify(watchlist));if(page==='markets')$('#market-rows').innerHTML=marketRows($('#search').value);if($('#modal').open){b.textContent=watchlist.includes(symbol)?'Remove from watchlist':'Add to watchlist'}toast(watchlist.includes(symbol)?`${symbol} added to watchlist`:`${symbol} removed from watchlist`)}if(b.dataset.selectMarket){selectedSymbol=b.dataset.selectMarket;$('#selected-market').innerHTML=coin(assets.find(a=>a.symbol===selectedSymbol))+selectedSymbol+' / '+(market==='memes'?'USDT':'USD');$('#market-live').innerHTML=liveChart(selectedSymbol,'markets-chart');$('#market-rows').innerHTML=marketRows($('#search').value);hydrateCharts()}});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.pin){const symbol=b.dataset.pin;watchlist=watchlist.includes(symbol)?watchlist.filter(x=>x!==symbol):[...watchlist,symbol];localStorage.setItem('canopy-zero-watchlist',JSON.stringify(watchlist));if(page==='markets')$('#market-rows').innerHTML=marketRows($('#search').value);if($('#modal').open){b.textContent=watchlist.includes(symbol)?'Remove from watchlist':'Add to watchlist'}toast(watchlist.includes(symbol)?`${symbol} added to watchlist`:`${symbol} removed from watchlist`)}if(b.dataset.selectMarket){selectedSymbol=b.dataset.selectMarket;$('#selected-market').innerHTML=marketChartTitle(selectedSymbol);$('#market-live').innerHTML=liveChart(selectedSymbol,'markets-chart');$('#market-rows').innerHTML=marketRows($('#search').value);hydrateCharts()}});
 setTheme(document.documentElement.dataset.theme||'light');
 window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);$('.shell').scrollTo(0,0)});render();

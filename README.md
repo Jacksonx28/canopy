@@ -26,3 +26,9 @@ Rabby, MetaMask, and other injected EVM wallets are discovered with EIP-6963 and
 [LayerZero’s metadata](https://metadata.layerzero-api.com/v1/metadata) lists Zero mainnet as chain ID `33002` and its testnet as `43002`. Both list 18-decimal ZRO. The published testnet RPC is `https://testnet.zero.layerzero.network`. The endpoint returned HTTP 403 when checked for `eth_chainId`, and [LayerZero's deployment request](https://github.com/safe-fndn/safe-singleton-factory/issues/1500) describes allowlisted IP or API key access. The metadata lists no explorer for either network. The Zero network config is separate from execution. Mainnet transactions, live swaps, token approvals and ATLAS execution are disabled in this demo.
 
 The development testnet pool, bridge helpers and tests are retained in `src/`, `contracts/`, and `tests/`. To build the old testnet client for internal work, run `npm run build -- --dev-testnet`. Its artifacts go in `.dev-testnet/` and aren’t included in the preview.
+
+## Demo asset catalog
+
+ZRO is [Zero’s native token](https://layerzero.network/resources/zero). USD₮0, PYUSD, and weETH are [LayerZero ecosystem examples](https://layerzero.network/blog/the-default-is-many-chains) with sample prices and balances. Their inclusion is not a claim of deployment or liquidity on Zero. BTC and SOL remain general market references. Swap and Bridge share one workspace, and Bridge simulates ZRO transfers only.
+
+Token marks are sourced from the [Uniswap token list](https://tokens.uniswap.org/), [USD₮0](https://docs.usdt0.to/downloads/usdt0/Symbol_USDT0_Secondary.svg), [BGD Labs](https://github.com/bgd-labs/web3-icons), and the [Optimism Superchain token list](https://github.com/ethereum-optimism/ethereum-optimism.github.io). The MetaMask mark is from its [brand assets](https://metamask.com/assets).

@@ -1,31 +1,353 @@
-import {createClient} from '@supabase/supabase-js';
-import {cleanWalletInfo,safeWalletIcon} from './wallet-safety.js';
-const $=s=>document.querySelector(s),welcome=$('#welcome'),loader=$('#entry-loader'),status=$('#auth-status');
-const app=[$('.sidebar'),$('.shell')],reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let client=null,session=null,mode='signin',busy=false,entering=false,wallets=[],configReady=false;
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const redirectTo=new URL('./',location.href).href;
-function message(text,error=false){status.textContent=text;status.dataset.error=String(error)}
-function lock(value){busy=value;welcome.querySelectorAll('button:not(#welcome-theme),input').forEach(el=>el.disabled=value);welcome.setAttribute('aria-busy',String(value))}
-function loaderShow(text){loader.hidden=false;loader.classList.remove('exiting');$('#entry-loading-label').textContent=text}
-async function loaderHide(){loader.classList.add('exiting');await sleep(reduced()?0:400);loader.hidden=true}
-function accountLabel(){const b=$('#account-access');b.setAttribute('aria-label',session?'Account settings':'Sign in or create an account');b.title=session?'Account settings':'Sign in or create an account'}
-async function enter(){if(entering)return;entering=true;welcome.inert=true;loaderShow(session?'Welcome to your canopy.':'Opening your canopy.');await sleep(reduced()?80:850);welcome.hidden=true;app.forEach(el=>el.inert=false);document.documentElement.classList.remove('welcome-open');try{sessionStorage.setItem('canopy-exploring','1')}catch{}await loaderHide();$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});entering=false}
-function showWelcome(){if(busy||entering)return;welcome.hidden=false;welcome.inert=false;app.forEach(el=>el.inert=true);document.documentElement.classList.add('welcome-open');setMode('signin');$('#sign-in-tab').focus();if(session){message('You are signed in. Choose Continue to return, or sign out of this browser.');$('#welcome-title').textContent='Your canopy awaits.';$('#welcome-guest').textContent='Continue to Canopy';$('#auth-panel').querySelectorAll('.auth-providers,.auth-divider,#auth-form,.auth-password-note').forEach(el=>el.hidden=true);let b=$('#auth-signout');if(!b){b=document.createElement('button');b.id='auth-signout';b.className='auth-provider';b.textContent='Sign out';status.after(b)}b.onclick=signout}}
-function setMode(next){mode=next;message('');$('#auth-wallets').hidden=true;$('#auth-signout')?.remove();$('#auth-panel').querySelectorAll('.auth-providers,.auth-divider,#auth-form,.auth-password-note').forEach(el=>el.hidden=false);$('#welcome-guest').textContent='Explore as a guest';for(const b of welcome.querySelectorAll('[data-auth-mode]')){const active=b.dataset.authMode===mode;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1}$('#auth-panel').setAttribute('aria-labelledby',mode==='signup'?'sign-up-tab':'sign-in-tab');$('#welcome-title').textContent=mode==='signup'?'Find your place.':'Welcome back.';$('#auth-kicker').textContent=mode==='signup'?'A FRESH START':'MAKE YOURSELF AT HOME';$('#auth-subtitle').textContent=mode==='signup'?'One account. Everything under one canopy.':'Pick up where you left off.';$('#auth-email-submit').textContent=mode==='signup'?'Create account with email':'Send sign-in link'}
-function ready(){if(client)return true;message(configReady?'Account sign-in is not available yet. You can explore as a guest.':'Account sign-in is still loading. Please try again in a moment.',true);return false}
-async function run(fn){if(busy||entering)return;lock(true);message('');try{await fn()}catch(e){message(e?.code===4001?'You cancelled the wallet request. Nothing was changed.':e?.message||'That didn’t go through. Please try again.',true)}finally{lock(false)}}
-async function verifyAndEnter(){const {data,error}=await client.auth.getUser();if(error||!data.user)throw error||Error('Could not verify this session. Please sign in again.');const r=await client.auth.getSession();session=r.data.session;accountLabel();await enter()}
-async function signout(){await run(async()=>{const {error}=await client.auth.signOut({scope:'local'});if(error)throw error;session=null;try{sessionStorage.removeItem('canopy-exploring')}catch{}accountLabel();setMode('signin');message('Signed out of Canopy on this browser. Your wallet connection is separate.');})}
-for(const b of welcome.querySelectorAll('[data-auth-mode]')){b.onclick=()=>{if(session){showWelcome();return}setMode(b.dataset.authMode)};b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?'signin':e.key==='End'?'signup':mode==='signin'?'signup':'signin';setMode(next);$(next==='signin'?'#sign-in-tab':'#sign-up-tab').focus()}}
-$('#welcome-guest').onclick=enter;$('#account-access').onclick=showWelcome;$('.glass-header .wordmark').addEventListener('click',e=>{e.preventDefault();showWelcome()});
-$('#welcome-theme').onclick=()=>{const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=theme;try{localStorage.setItem('canopy-theme',theme)}catch{};$('#appearance').setAttribute('aria-label',`Switch to ${theme==='dark'?'light':'dark'} mode`);$('#mobile-theme').setAttribute('aria-label',`Switch to ${theme==='dark'?'light':'dark'} mode`)};
-$('#auth-form').onsubmit=e=>{e.preventDefault();if(!ready()||busy)return;const email=$('#auth-email').value.trim();if(!$('#auth-form').reportValidity())return;run(async()=>{message('Sending your secure link…');const {error}=await client.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo,shouldCreateUser:mode==='signup'}});if(error)throw error;message('Check your inbox for a secure link. Open it in this browser to continue.');$('#auth-email').value='';})};
-$('#auth-google').onclick=()=>{if(!ready())return;run(async()=>{message('Opening Google…');const {data,error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo,skipBrowserRedirect:true}});if(error)throw error;const url=new URL(data.url);if(url.protocol!=='https:')throw Error('Invalid sign-in destination.');location.assign(url.href)})};
-function discover(provider,info){if(!provider||typeof provider.request!=='function'||wallets.some(w=>w.provider===provider)||wallets.length>=20)return;wallets.push({provider,...cleanWalletInfo(info)});if(!$('#auth-wallets').hidden)renderWallets()}
-function renderWallets(){const list=$('#auth-wallets');list.innerHTML=wallets.length?'<p>Choose a wallet. You’ll sign a login message, not a transaction.</p>'+wallets.map((w,i)=>{const icon=safeWalletIcon(w.icon)||(w.provider.isRabby?'assets/rabby-wallet.png':'');return `<button type="button" data-auth-wallet="${i}">${icon?`<img src="${esc(icon)}" alt="">`:''}<span>${esc(w.name)}</span></button>`}).join(''):'<p>No wallet detected. Open Canopy in a browser with Rabby or another EVM wallet installed.</p><a href="https://rabby.io" target="_blank" rel="noopener noreferrer">Get Rabby Wallet</a>';list.querySelectorAll('[data-auth-wallet]').forEach(b=>{b.disabled=busy;b.onclick=()=>{if(!ready())return;const w=wallets[Number(b.dataset.authWallet)];run(async()=>{message('Approve the sign-in message in your wallet. No funds will move.');const {error}=await client.auth.signInWithWeb3({chain:'ethereum',wallet:w.provider,statement:'Sign in to Canopy. This does not authorize a transaction or token approval.',options:{signInWithEthereum:{expirationTime:new Date(Date.now()+5*60*1000)}}});if(error)throw error;await verifyAndEnter()})}})}
-window.addEventListener('eip6963:announceProvider',e=>discover(e.detail?.provider,e.detail?.info));window.dispatchEvent(new Event('eip6963:requestProvider'));for(const p of window.ethereum?.providers||[window.ethereum])discover(p,{name:p?.isRabby?'Rabby':p?.isMetaMask?'MetaMask':'Browser wallet'});
-$('#auth-wallet').onclick=()=>{if(!ready())return;$('#auth-wallets').hidden=!$('#auth-wallets').hidden;if(!$('#auth-wallets').hidden){window.dispatchEvent(new Event('eip6963:requestProvider'));renderWallets()}};
-async function initialize(){const started=Date.now();try{const r=await fetch('auth-config.json',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error('Account configuration unavailable');const c=await r.json();if(c.url&&c.publishableKey){const url=new URL(c.url);if(url.protocol!=='https:'||!url.hostname.endsWith('.supabase.co'))throw Error('Invalid account service');if(!c.publishableKey.startsWith('sb_publishable_')){const payload=JSON.parse(atob(c.publishableKey.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(payload.role!=='anon')throw Error('Only a public authentication key is allowed')}client=createClient(c.url,c.publishableKey,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true},global:{fetch:(input,init)=>fetch(input,{...init,signal:init?.signal||AbortSignal.timeout(15000)})}});const {data,error}=await client.auth.getSession();if(error)throw error;if(data.session){const verified=await client.auth.getUser();if(!verified.error)session=data.session;}client.auth.onAuthStateChange((event,value)=>{session=value;accountLabel();if(event==='SIGNED_OUT'&&!welcome.hidden)setTimeout(()=>{setMode('signin');message('Your session has ended. Please sign in again.')},0)});}}catch(e){message('Account sign-in could not load. You can still explore as a guest.',true)}finally{configReady=true;accountLabel();await sleep(Math.max(0,(reduced()?0:1200)-(Date.now()-started)));let guest=false;try{guest=sessionStorage.getItem('canopy-exploring')==='1'}catch{}if(session||guest){welcome.hidden=true;app.forEach(el=>el.inert=false);document.documentElement.classList.remove('welcome-open')}welcome.inert=false;await loaderHide()}}
-initialize();
+import { createClient } from '@supabase/supabase-js';
+import { cleanWalletInfo, safeWalletIcon } from './wallet-safety.js';
+import { createWalletConnection, parseAuthConfig, parseZeroNetwork, walletError } from './zero-wallet.js';
+
+const $ = selector => document.querySelector(selector);
+const welcome = $('#welcome');
+const loader = $('#entry-loader');
+const app = [$('.sidebar'), $('.shell')];
+const accountButton = $('#account-access');
+const walletButton = $('#wallet');
+const splashWalletButton = $('#auth-wallet');
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const shortAddress = address => `${address.slice(0, 6)}…${address.slice(-4)}`;
+const guestKey = 'canopy-zero-guest';
+const wallets = [];
+const walletBrands = {
+  rabby: { name: 'Rabby', icon: 'assets/rabby-wallet.png', website: 'https://rabby.io/' },
+  // MetaMask fox from the official logo pack at https://metamask.io/assets.
+  metamask: { name: 'MetaMask', icon: 'assets/metamask-wallet.svg', website: 'https://metamask.io/download/' },
+};
+let entering = false;
+let connecting = false;
+let authBusy = false;
+let authClient = null;
+let authUser = null;
+let authContext = null;
+let zeroNetwork = null;
+let authConfigLoading = true;
+
+const connection = createWalletConnection((context, previous) => {
+  if (previous && authUser) {
+    authUser = null;
+    authContext = null;
+    void signOut('Wallet changed. Sign in again if needed.');
+  }
+  updateHeader(context);
+  if (welcome.hidden && Boolean(context) !== Boolean(previous)) updateMode(context ? 'wallet' : 'guest');
+  if ($('#zero-wallet-settings')) showSettings();
+});
+
+function updateMode(mode) {
+  window.CanopyMode = mode;
+  document.documentElement.dataset.workspace = mode;
+  try {
+    if (mode === 'guest') sessionStorage.setItem(guestKey, '1');
+    else sessionStorage.removeItem(guestKey);
+  } catch {}
+  window.dispatchEvent(new CustomEvent('canopy:mode', { detail: mode }));
+}
+
+function updateHeader(context = connection.current()) {
+  walletButton.textContent = context ? shortAddress(context.address) : 'Connect Wallet';
+  walletButton.setAttribute('aria-label', context ? `Wallet settings for ${shortAddress(context.address)}` : 'Connect Wallet');
+  accountButton.setAttribute('aria-label', authUser ? 'Signed-in account settings' : 'Wallet and account settings');
+}
+
+function loaderShow() {
+  loader.hidden = false;
+  loader.classList.remove('exiting');
+  $('#entry-loading-label').textContent = 'Opening Canopy Zero…';
+}
+
+async function loaderHide() {
+  loader.classList.add('exiting');
+  await sleep(reducedMotion() ? 0 : 400);
+  if (!entering) loader.hidden = true;
+}
+
+async function enter(mode, animate = true) {
+  if (entering || !welcome) return;
+  if (welcome.hidden) {
+    updateMode(mode);
+    return;
+  }
+  entering = true;
+  welcome.inert = true;
+  if (animate) {
+    loaderShow();
+    await sleep(reducedMotion() ? 0 : 350);
+  }
+  updateMode(mode === 'wallet' && connection.current() ? 'wallet' : 'guest');
+  welcome.hidden = true;
+  app.forEach(el => el.inert = false);
+  document.documentElement.classList.remove('welcome-open');
+  entering = false;
+  await loaderHide();
+  const main = $('#main');
+  main.setAttribute('tabindex', '-1');
+  main.focus({ preventScroll: true });
+}
+
+function discover(provider, info) {
+  if (!provider || typeof provider.request !== 'function') return;
+  const metadata = cleanWalletInfo(info ?? {});
+  const known = wallets.find(wallet => wallet.provider === provider);
+  if (known) {
+    if (metadata.rdns) Object.assign(known, metadata);
+  } else if (wallets.length < 20) {
+    wallets.push({ provider, ...metadata });
+  }
+  if ($('#zero-wallet-choices') && !connecting) renderWallets();
+}
+
+function walletBrand(wallet) {
+  const rdns = wallet.rdns?.toLowerCase();
+  if (rdns === 'io.rabby' || (!rdns && wallet.provider.isRabby)) return walletBrands.rabby;
+  if (rdns === 'io.metamask' || (!rdns && wallet.provider.isMetaMask)) return walletBrands.metamask;
+  return null;
+}
+
+function walletIcon(icon) {
+  const glyph = window.CanopyUI.graphic('<rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 9h18m-5 5h3"/>');
+  return `<span class="wallet-provider-icon">${icon ? `<img src="${escape(icon)}" alt="" width="32" height="32">` : glyph}</span>`;
+}
+
+function providerIcon(wallet) {
+  return walletIcon(walletBrand(wallet)?.icon || safeWalletIcon(wallet.icon));
+}
+
+function modalStatus(message, error = false) {
+  const element = $('#zero-wallet-status');
+  if (!element) return;
+  element.textContent = message;
+  element.dataset.error = String(error);
+}
+
+function renderWallets() {
+  const choiceList = $('#zero-wallet-choices');
+  choiceList.innerHTML = wallets.length ? wallets.map((wallet, index) => `
+    <button class="wallet-choice" type="button" data-wallet-index="${index}">
+      ${providerIcon(wallet)}<span><b>${escape(wallet.name)}</b><small>${escape(wallet.rdns || 'Installed EVM wallet')}</small></span>
+      <span class="wallet-choice-status">Connect</span>
+    </button>`).join('') : `
+    <p>No wallet was detected in this browser. Try opening Canopy Zero in your wallet’s built-in browser or use a wallet extension on desktop.</p>
+    ${Object.values(walletBrands).map(({ name, icon, website }) => `
+      <a class="wallet-choice wallet-download" href="${website}" target="_blank" rel="noopener noreferrer">
+        ${walletIcon(icon)}<span><b>Get ${name}</b></span>
+      </a>`).join('')}`;
+  for (const button of choiceList.querySelectorAll('[data-wallet-index]')) {
+    button.disabled = connecting;
+    button.onclick = () => connect(wallets[Number(button.dataset.walletIndex)]);
+  }
+}
+
+function showChooser() {
+  window.showModal(`
+    <h2>Connect Wallet</h2>
+    <p>Choose an installed wallet to share your public address. Connecting leaves Canopy Zero in Demo Mode.</p>
+    <div id="zero-wallet-choices" class="wallet-options"></div>
+    <p id="zero-wallet-status" class="auth-status" role="status"></p>`);
+  renderWallets();
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+}
+
+async function connect(wallet) {
+  if (connecting) return;
+  connecting = true;
+  renderWallets();
+  modalStatus(`Waiting for ${wallet.name}…`);
+  try {
+    await connection.connect(wallet);
+    if ($('#zero-wallet-choices')) $('#modal').close();
+    await enter('wallet');
+  } catch (error) {
+    modalStatus(walletError(error), true);
+  } finally {
+    connecting = false;
+    if ($('#zero-wallet-choices')) renderWallets();
+  }
+}
+
+function showSettings() {
+  const context = connection.current();
+  if (!context) {
+    if ($('#zero-wallet-settings') && $('#modal').open) showChooser();
+    return;
+  }
+  const isZero = !!zeroNetwork && zeroNetwork.chainId === context.chainId;
+  const networkName = isZero ? zeroNetwork.name : context.chainId ? `Chain ID ${context.chainId}` : 'Network unavailable';
+  const activeAccount = authUser && authContext === context;
+  window.showModal(`
+    <div id="zero-wallet-settings">
+      <h2>Wallet &amp; account</h2>
+      <p class="zero-wallet-label">${providerIcon(context.wallet)} <b>${escape(context.wallet.name)} connected</b></p>
+      <p class="address">${escape(context.address)}</p>
+      <p>${escape(networkName)} · Demo Mode</p>
+      <div class="trade-details">
+        <div><span>Account</span><b>${activeAccount ? 'Signed in' : 'Signed out'}</b></div>
+      </div>
+      <p>${activeAccount ? 'Your wallet signature was verified by the account service.' : 'Wallet connection shares your address. Account sign-in separately verifies a wallet signature.'}</p>
+      ${isZero && zeroNetwork.explorerUrl ? `<p><a href="${escape(zeroNetwork.explorerUrl)}" target="_blank" rel="noopener noreferrer">Open Zero explorer</a></p>` : ''}
+      ${authClient ? `<button class="primary full" id="zero-wallet-auth" ${authBusy ? 'disabled' : ''}>${activeAccount ? 'Sign out of account' : 'Sign in with wallet'}</button>` : `<p class="form-note">${authConfigLoading ? 'Checking account service…' : 'Account sign-in is unavailable in this preview.'}</p>`}
+      <p id="zero-wallet-status" class="auth-status" role="status"></p>
+      <div class="modal-actions">
+        <button class="secondary" id="zero-switch-wallet" ${authBusy ? 'disabled' : ''}>Change wallet</button>
+        <button class="quiet" id="zero-disconnect-wallet">Disconnect</button>
+      </div>
+    </div>`);
+  $('#zero-switch-wallet').onclick = showChooser;
+  $('#zero-disconnect-wallet').onclick = () => {
+    $('#modal').close();
+    connection.disconnect();
+    walletButton.focus();
+  };
+  const authButton = $('#zero-wallet-auth');
+  if (authButton) authButton.onclick = activeAccount ? () => signOut() : signIn;
+}
+
+function refreshSettings(message = '', error = false) {
+  updateHeader();
+  if ($('#modal').open && $('#zero-wallet-settings')) {
+    showSettings();
+    modalStatus(message, error);
+  }
+}
+
+async function signIn() {
+  if (!authClient || authBusy) return;
+  const context = connection.current();
+  authBusy = true;
+  refreshSettings('Approve the Canopy Zero sign-in message in your wallet.');
+  let status = 'Signed in to Canopy Zero.';
+  let failed = false;
+  let issuedSession = false;
+  try {
+    const now = Date.now();
+    const { data, error } = await authClient.auth.signInWithWeb3({
+      chain: 'ethereum',
+      wallet: connection.signInAdapter(context),
+      statement: 'Sign in to Canopy Zero. This message does not authorize transactions or token approvals.',
+      options: {
+        url: new URL('./', location.href).href,
+        signInWithEthereum: {
+          nonce: crypto.randomUUID().replaceAll('-', ''),
+          issuedAt: new Date(now),
+          notBefore: new Date(now - 60 * 1000),
+          expirationTime: new Date(now + 5 * 60 * 1000),
+        },
+      },
+    });
+    if (error || !data.session) throw error || Error('The account service did not issue a session.');
+    issuedSession = true;
+    const verified = await authClient.auth.getUser(data.session.access_token);
+    const user = verified.data.user;
+    const hasWalletIdentity = user?.identities?.some(identity =>
+      identity.provider === 'web3' && typeof identity.identity_data?.address === 'string' &&
+      identity.identity_data.address.toLowerCase() === context.address.toLowerCase(),
+    );
+    if (verified.error || !hasWalletIdentity) throw Error('The account service could not verify this wallet account.');
+    await connection.check(context);
+    authContext = context;
+    authUser = user;
+  } catch (error) {
+    authContext = null;
+    authUser = null;
+    if (issuedSession) await authClient.auth.signOut({ scope: 'local' });
+    status = walletError(error);
+    failed = true;
+  } finally {
+    authBusy = false;
+    refreshSettings(status, failed);
+  }
+}
+
+async function signOut(message = 'Signed out of your account.') {
+  if (!authClient || authBusy) return;
+  authBusy = true;
+  authUser = null;
+  authContext = null;
+  let failed = false;
+  try {
+    const { error } = await authClient.auth.signOut({ scope: 'local' });
+    if (error) throw error;
+  } catch {
+    message = 'The account service could not complete sign-out. Reload before signing in again.';
+    failed = true;
+  } finally {
+    authBusy = false;
+    refreshSettings(message, failed);
+  }
+}
+
+async function readConfig(path) {
+  const response = await fetch(path, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+  if (!response.ok) throw Error('Could not load configuration.');
+  return response.json();
+}
+
+async function configureAuth() {
+  try {
+    const config = parseAuthConfig(await readConfig('auth-config.json'));
+    if (!config) return;
+    authClient = createClient(config.url, config.key, {
+      auth: { storageKey: 'canopy-zero-auth', detectSessionInUrl: false, persistSession: false },
+    });
+    authClient.auth.onAuthStateChange(event => {
+      if (event !== 'SIGNED_OUT') return;
+      authUser = null;
+      authContext = null;
+      refreshSettings();
+    });
+  } catch {
+    authClient = null;
+  } finally {
+    authConfigLoading = false;
+    refreshSettings();
+  }
+}
+
+async function configureNetwork() {
+  try {
+    const config = await readConfig('zero-config.json');
+    zeroNetwork = parseZeroNetwork(config.network);
+    refreshSettings();
+  } catch {
+    zeroNetwork = null;
+  }
+}
+
+function openWallet() {
+  if (connection.current()) showSettings();
+  else showChooser();
+}
+
+window.addEventListener('eip6963:announceProvider', event => discover(event.detail?.provider, event.detail?.info));
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+const legacyProviders = window.ethereum?.providers;
+for (const provider of Array.isArray(legacyProviders) ? legacyProviders : [window.ethereum]) {
+  discover(provider, { name: provider?.isRabby ? 'Rabby' : provider?.isMetaMask ? 'MetaMask' : 'Browser wallet' });
+}
+splashWalletButton.innerHTML = `<span class="splash-wallet-marks" aria-hidden="true">${Object.values(walletBrands).map(({ icon }) => walletIcon(icon)).join('')}</span><span>Connect wallet</span>`;
+splashWalletButton.onclick = openWallet;
+$('#welcome-guest').onclick = () => {
+  connection.disconnect();
+  void enter('guest');
+};
+walletButton.onclick = openWallet;
+accountButton.onclick = openWallet;
+$('#welcome-theme').onclick = () => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  window.setTheme(theme);
+  $('#welcome-theme').setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
+};
+updateHeader();
+void configureAuth();
+void configureNetwork();
+
+let resumeGuest = false;
+try { resumeGuest = sessionStorage.getItem(guestKey) === '1'; } catch {}
+if (resumeGuest) void enter('guest', false);
+else void loaderHide();

@@ -1,0 +1,9 @@
+{
+  "network": {
+    "name": "Zero Interop Testnet",
+    "chainId": 43002,
+    "rpcUrl": "https://testnet.zero.layerzero.network",
+    "explorerUrl": null,
+    "sourceUrl": "https://metadata.layerzero-api.com/v1/metadata"
+  }
+}

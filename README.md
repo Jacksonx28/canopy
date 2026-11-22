@@ -1,61 +1,34 @@
-# Canopy
+# Canopy Zero
 
-Your portfolio, markets, swaps, bridges, and staking—all under one canopy.
+Canopy Zero is a public demo of the Canopy workspace for the Zero ecosystem. The `canopy-zero` branch carries this edition. GitHub Pages publishes this edition from `canopy-zero`. The original Canopy RH release is hosted separately from a snapshot of `main`.
 
-Canopy brings these tools into one interface, with light/dark themes, TradingView charts, DexScreener RH market data, and an injected-wallet testnet workspace. The current build combines market data, simulations, and testnet functionality as documented below.
+- [Canopy Zero on GitHub Pages](https://jacksonx28.github.io/canopy/dist/#testnet)
+- [Canopy Zero preview](https://canopy-zero.israeljackson854.chatgpt.site)
+- [Canopy RH](https://canopy-rh.israeljackson854.chatgpt.site/#testnet)
 
-## Run and build
+## Run locally
 
-`npm ci`, `npm run build`, then serve `dist/`. `npm test` runs the test-pool contract on an ephemeral local Ganache chain. The published static assets include the locally bundled ethers client and reproducible Solidity artifacts. No API keys or wallet secrets are stored.
+```sh
+npm ci
+npm run build
+npm test
+python3 -m http.server 4173 --bind 127.0.0.1 --directory dist
+```
 
-## Data
+Open `http://127.0.0.1:4173/`. Portfolio balances, swaps, bridge transfers, staking, and activity are simulations stored in the browser. TradingView charts show external exchange data where an exact market is mapped. A missing pair shows an unavailable state. Perps and Rewards are previews of future sections.
 
-41 stock/crypto/meme chart choices. Legacy portfolio quotes and balances remain sample data. Newly added symbols have chart links rather than invented prices. TradingView availability and exchange delay vary.
+## Wallets and account sign-in
 
-RH markets use DexScreener's public tokens API. A seed universe of 28 tokens is expanded on refresh with public RH search results and latest token profiles (up to 90 addresses). It is ranked by the 24-hour volume of each token's most liquid pool. This is NOT the proprietary trending leaderboard or complete chain coverage. Refresh runs hourly while the page is open and catches up on visibility return. It is not a background server cron. Successful snapshots are cached with timestamps; errors preserve the last snapshot. `scripts/seed-rh.py` rebuilds discovery snapshots using the documented search endpoint.
+Rabby, MetaMask, and other injected EVM wallets are discovered with EIP-6963 and legacy wallet detection. Connecting gives Canopy Zero the public address and current chain ID. Guests and connected wallets use the same demo simulation. A separate signed-message flow uses Supabase Auth when configured. Its public project URL and publishable key go in `dist/auth-config.json`. The preview uses an empty configuration until a backend is supplied. Enable Ethereum Web3 sign-in in that project and configure the preview origin using the [Supabase Web3 authentication docs](https://supabase.com/docs/guides/auth/auth-web3). Keep secret and service-role keys out of the frontend. Google sign-in is deferred.
 
-## Wallet testing
+## Zero network readiness
 
-Open in a Rabby-enabled desktop browser. EIP-6963 discovery and injected EVM wallets are supported. No WalletConnect relay is configured. Explicit user connection and wallet confirmation are required.
+[LayerZero’s metadata](https://metadata.layerzero-api.com/v1/metadata) lists Zero mainnet as chain ID `33002` and its testnet as `43002`. Both list 18-decimal ZRO. The published testnet RPC is `https://testnet.zero.layerzero.network`. The endpoint returned HTTP 403 when checked for `eth_chainId`, and [LayerZero's deployment request](https://github.com/safe-fndn/safe-singleton-factory/issues/1500) describes allowlisted IP or API key access. The metadata lists no explorer for either network. The Zero network config is separate from execution. Mainnet transactions, live swaps, token approvals and ATLAS execution are disabled in this demo.
 
-Supported networks: RH testnet 46630, Arbitrum Sepolia 421614, Ethereum Sepolia 11155111. Mainnet signing is blocked in the client, and the pool constructor refuses mainnet deployment.
+The development testnet pool, bridge helpers and tests are retained in `src/`, `contracts/`, and `tests/`. To build the old testnet client for internal work, run `npm run build -- --dev-testnet`. Its artifacts go in `.dev-testnet/` and aren’t included in the preview.
 
-1. Connect Rabby, select RH testnet, and get test ETH from the linked official faucet.
-2. Deploy a personal ETH/CAN test pool with 0.001 test ETH plus gas. It allocates 100,000 CAN to the wallet and 100,000 CAN to its reserve.
-3. Buy or sell CAN; swaps charge 0.3% and use 0.5% slippage and a ten-minute deadline. CAN has no value. Seed liquidity cannot be withdrawn. This is a test harness, not production DEX integration or a general ERC20 implementation.
-4. To bridge, use an ordinary EOA on Ethereum Sepolia with test ETH. Select RH testnet or Arbitrum Sepolia and deposit through the verified canonical inbox. Smart/delegated wallets are rejected because depositEth aliases contract callers. L1 confirmation is NOT L2 arrival. Direct L2-to-L2 routing is not implemented; the official bridge link covers other routes.
+## Demo asset catalog
 
-The agent has tested contracts locally and disconnected-wallet UI, not a user-signed Rabby transaction on public testnet. Staking remains a simulation. Swap and Bridge open the wallet-backed testnet flow by default; an explicit Simulation preview tab preserves the demo. Contract and transaction references are shown in the wallet review and explorer links.
+ZRO is [Zero’s native token](https://layerzero.network/resources/zero). USD₮0, PYUSD, and weETH are [LayerZero ecosystem examples](https://layerzero.network/blog/the-default-is-many-chains) with sample prices and balances. Their inclusion is not a claim of deployment or liquidity on Zero. BTC and SOL remain general market references. Swap and Bridge share one workspace, and Bridge simulates ZRO transfers only.
 
-## Sources
-
-- https://docs.robinhood.com/chain/connecting/
-- https://docs.robinhood.com/chain/protocol-contracts/
-- https://docs.arbitrum.io/chain-info
-- https://docs.arbitrum.io/how-arbitrum-works/deep-dives/l1-to-l2-messaging
-- https://docs.dexscreener.com/api/reference
-- https://eips.ethereum.org/EIPS/eip-6963
-
-## Interface and wallet safeguards
-
-Favicon and loading motion use the Canopy leaf. Navigation collapses to five mobile items with a More dialog. Decorative market sparklines were removed. Stock vector marks are sourced from Simple Icons; provider artwork and stock images retain their respective ownership. Source records are in dist/data.
-
-Wallet icons use bounded image data URIs and are rendered only as img elements, never inserted as SVG markup. Announced names and icons are self-reported by extensions and are not identity verification. Connection requests public accounts only; transactions still require wallet confirmation. Switching or disconnecting cleans provider listeners; account and chain context is revalidated before signing. No private keys, seed phrases, or token approval signatures are requested by the app.
-
-TradingView runs in a sandboxed, cross-origin iframe on its own domain. No TradingView script executes in the host page, isolating it from the host wallet provider and local state. Mainnet signing remains disabled. Automated checks cover malformed icon input and changed wallet context; this is not an independent security audit.
-
-## Welcome and account access
-
-The welcome screen includes sign-in/sign-up, a falling-leaf loader, light/dark mode, and guest exploration. Account access uses the bundled official Supabase client: email magic links, Google OAuth with PKCE, and Ethereum wallet-message verification. Connecting a wallet for transactions remains separate from signing into an account. Existing sample balances are browser-local and are not synced to an account.
-
-Set `dist/auth-config.json` to your Supabase project URL and **public publishable key** (or legacy anon key). Never use a service-role or secret key. An empty configuration keeps account access unavailable, with guest access working. Enable Email, Google, and Web3/Ethereum in Supabase Auth. Allow `https://jacksonx28.github.io/canopy/dist/` as a redirect URL; set the Site URL to that same URL. Configure Google credentials in Supabase, not in this repository. Email links must be opened in the browser that requested them for PKCE. Configure production email delivery before launch.
-
-Run `npm run build` after modifying `src/welcome.js`. The welcome stylesheet and markup are in `dist/welcome.css` and `dist/index.html`. Supabase details are still required to verify live account creation, Google redirects, and signed wallet sessions.
-
-## Testnet transaction checks
-
-Swap and Bridge open real testnet forms by default. Bridge requests connection or switches the wallet to Ethereum Sepolia before review. The destination and amount survive network changes. Preflight validates the EOA recipient rules, canonical inbox code, wallet context, source balance, and estimated gas; the same checks run again before sending. Smart/delegated wallets remain blocked for this native deposit method to avoid address aliasing. Pool addresses are saved only after successful deployment confirmation.
-
-Verification on 2026-11-21: all three public RPCs responded with the expected chain IDs; both canonical L1 inboxes had deployed code; read-only eth_call simulations of a 0.001 ETH deposit succeeded for RH and Arbitrum using a synthetic sender balance override. These checks do not prove wallet signing or L2 delivery. Public-testnet end-to-end testing still requires a funded wallet and user approval. Automated tests cover swap protections, allowed networks, invalid amounts, bridge gas affordability, and smart-account aliasing protection.
-
-To try bridging: open Bridge, connect Rabby, switch to Ethereum Sepolia, choose RH testnet or Arbitrum Sepolia, and fund the wallet with Sepolia ETH for the amount plus gas. Review and approve in Rabby. L1 confirmation is reported separately from unverified L2 arrival. Direct L2-to-L2 and L2 withdrawals are not implemented here.
+Token marks are sourced from the [Uniswap token list](https://tokens.uniswap.org/), [USD₮0](https://docs.usdt0.to/downloads/usdt0/Symbol_USDT0_Secondary.svg), [BGD Labs](https://github.com/bgd-labs/web3-icons), and the [Optimism Superchain token list](https://github.com/ethereum-optimism/ethereum-optimism.github.io). The MetaMask mark is from its [brand assets](https://metamask.com/assets).

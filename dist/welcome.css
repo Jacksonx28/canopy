@@ -27,3 +27,39 @@ html,body{width:100%;max-width:100%;overflow-x:hidden;overflow-x:clip}
 }
 
 @media(max-width:640px){.welcome-screen{scrollbar-width:none}.welcome-screen::-webkit-scrollbar{display:none}}
+
+#auth-wallet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-color: var(--accent, #438253);
+  background: #244c35;
+  color: #fff;
+  font-weight: 650;
+}
+#auth-wallet:hover { background: #356343; }
+html[data-theme=dark] #auth-wallet {
+  background: #b6e58e;
+  color: #102113;
+}
+html[data-theme=dark] #auth-wallet:hover { background: #c8eba9; }
+.splash-wallet-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.splash-wallet-marks .wallet-provider-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #fff;
+  padding: 3px;
+}
+.wallet-download { min-height: 52px; }
+.zero-wallet-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#zero-wallet-settings .address { overflow-wrap: anywhere; }

@@ -63,3 +63,6 @@ html[data-theme=dark] #auth-wallet:hover { background: #c8eba9; }
   gap: 10px;
 }
 #zero-wallet-settings .address { overflow-wrap: anywhere; }
+
+/* The loading animation is visual feedback, never a click target. */
+.entry-loader { pointer-events: none; }

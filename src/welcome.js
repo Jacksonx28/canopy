@@ -10,7 +10,6 @@ const accountButton = $('#account-access');
 const walletButton = $('#wallet');
 const splashWalletButton = $('#auth-wallet');
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const shortAddress = address => `${address.slice(0, 6)}…${address.slice(-4)}`;
 const guestKey = 'canopy-zero-guest';
@@ -20,7 +19,9 @@ const walletBrands = {
   // MetaMask fox from the official logo pack at https://metamask.io/assets.
   metamask: { name: 'MetaMask', icon: 'assets/metamask-wallet.svg', website: 'https://metamask.io/download/' },
 };
-let entering = false;
+let pendingEntryMode = null;
+let entryTimer;
+let loaderTimer;
 let connecting = false;
 let authBusy = false;
 let authClient = null;
@@ -37,7 +38,7 @@ const connection = createWalletConnection((context, previous) => {
   }
   updateHeader(context);
   if (welcome.hidden && Boolean(context) !== Boolean(previous)) updateMode(context ? 'wallet' : 'guest');
-  if ($('#zero-wallet-settings')) showSettings();
+  if ($('#modal').open && $('#zero-wallet-settings')) showSettings();
 });
 
 function updateMode(mode) {
@@ -57,39 +58,60 @@ function updateHeader(context = connection.current()) {
 }
 
 function loaderShow() {
+  clearTimeout(loaderTimer);
   loader.hidden = false;
   loader.classList.remove('exiting');
   $('#entry-loading-label').textContent = 'Opening Canopy Zero…';
 }
 
-async function loaderHide() {
+function loaderHide(immediate = false) {
+  clearTimeout(loaderTimer);
   loader.classList.add('exiting');
-  await sleep(reducedMotion() ? 0 : 400);
-  if (!entering) loader.hidden = true;
+  if (immediate || reducedMotion()) loader.hidden = true;
+  else loaderTimer = setTimeout(() => { loader.hidden = true; }, 400);
 }
 
-async function enter(mode, animate = true) {
-  if (entering || !welcome) return;
+function finishEntry(immediate = false) {
+  if (!pendingEntryMode) return;
+  const mode = pendingEntryMode;
+  pendingEntryMode = null;
+  clearTimeout(entryTimer);
+  welcome.hidden = true;
+  welcome.inert = false;
+  app.forEach(el => el.inert = false);
+  document.documentElement.classList.remove('welcome-open');
+  loaderHide(immediate);
+  updateMode(mode === 'wallet' && connection.current() ? 'wallet' : 'guest');
+  const main = $('#main');
+  main.setAttribute('tabindex', '-1');
+  if (!$('#modal').open) main.focus({ preventScroll: true });
+}
+
+function enter(mode, animate = true) {
+  if (pendingEntryMode) return;
   if (welcome.hidden) {
     updateMode(mode);
     return;
   }
-  entering = true;
-  welcome.inert = true;
-  if (animate) {
-    loaderShow();
-    await sleep(reducedMotion() ? 0 : 350);
+  pendingEntryMode = mode;
+  if (!animate || reducedMotion() || document.hidden) {
+    finishEntry(true);
+    return;
   }
-  updateMode(mode === 'wallet' && connection.current() ? 'wallet' : 'guest');
-  welcome.hidden = true;
-  app.forEach(el => el.inert = false);
-  document.documentElement.classList.remove('welcome-open');
-  entering = false;
-  await loaderHide();
-  const main = $('#main');
-  main.setAttribute('tabindex', '-1');
-  main.focus({ preventScroll: true });
+  welcome.inert = true;
+  loaderShow();
+  entryTimer = setTimeout(finishEntry, 350);
 }
+
+function restoreEntry() {
+  if (document.hidden) return;
+  if (pendingEntryMode) finishEntry(true);
+  else if (loader.classList.contains('exiting')) loaderHide(true);
+}
+
+// Background tabs can suspend transition timers, including on mobile Safari.
+document.addEventListener('visibilitychange', restoreEntry);
+window.addEventListener('pageshow', restoreEntry);
 
 function discover(provider, info) {
   if (!provider || typeof provider.request !== 'function') return;
@@ -162,7 +184,7 @@ async function connect(wallet) {
   try {
     await connection.connect(wallet);
     if ($('#zero-wallet-choices')) $('#modal').close();
-    await enter('wallet');
+    enter('wallet');
   } catch (error) {
     modalStatus(walletError(error), true);
   } finally {
@@ -349,5 +371,5 @@ void configureNetwork();
 
 let resumeGuest = false;
 try { resumeGuest = sessionStorage.getItem(guestKey) === '1'; } catch {}
-if (resumeGuest) void enter('guest', false);
-else void loaderHide();
+if (resumeGuest) enter('guest', false);
+else loaderHide();

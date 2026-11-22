@@ -7,9 +7,29 @@ function network(name){const symbol=name.startsWith('Zero')?'ZERO':name.includes
 const sun=graphic('<circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/>');
 const moon=graphic('<path d="M20.5 14A8.6 8.6 0 0 1 10 3.5 8.7 8.7 0 1 0 20.5 14Z"/>');
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-function enter(el){if(el&&!reduced())el.animate([{opacity:.45,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],{duration:300,easing:'cubic-bezier(.2,.8,.2,1)'})}
-document.addEventListener('error',e=>{const image=e.target;if(image.tagName==='IMG'&&image.closest('.asset-logo')){const wrap=image.parentElement;image.remove();wrap.classList.add('logo-unavailable');wrap.innerHTML=graphic('<circle cx="12" cy="12" r="7"/><path d="M9 12h6"/>')}},true);
-document.addEventListener('click',e=>{const b=e.target.closest('button,a');if(!b||b.disabled||reduced())return;b.animate([{transform:'scale(.96)',filter:'brightness(.92)'},{transform:'scale(1)',filter:'brightness(1)'}],{duration:190,easing:'ease-out'})},true);
+const activeMotions = new WeakMap();
+function motion(element, frames, options) {
+  if (!element?.isConnected || typeof element.animate !== 'function' || reduced()) return;
+  activeMotions.get(element)?.cancel();
+  activeMotions.set(element, element.animate(frames, options));
+}
+function enter(element) {
+  motion(element, [{opacity:.45,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],
+    {duration:300,easing:'cubic-bezier(.2,.8,.2,1)'});
+}
+document.addEventListener('error', event => {
+  const image = event.target;
+  if (image?.tagName !== 'IMG' || !image.closest('.asset-logo')) return;
+  const wrapper = image.parentElement;
+  wrapper.classList.add('logo-unavailable');
+  wrapper.innerHTML = graphic('<circle cx="12" cy="12" r="7"/><path d="M9 12h6"/>');
+}, true);
+document.addEventListener('click', event => {
+  const control = event.target?.closest?.('button, a, tr[data-asset]');
+  if (!control || control.disabled || control.getAttribute('aria-disabled') === 'true') return;
+  motion(control, [{transform:'scale(.985)',filter:'brightness(.94)'},{transform:'scale(1)',filter:'brightness(1)'}],
+    {duration:170,easing:'ease-out'});
+}, true);
 
 const leaf=graphic('<path d="M4 19C4 9 11 3 21 3c0 10-6 17-16 17M5 19 17 7M8 15h7M12 11V6"/>','falling-leaf');
 function progress(label,detail=''){return `<div class="transaction-progress" role="status"><div class="leaf-stage" aria-hidden="true"><div class="leaf-drift">${leaf}</div><span class="leaf-shadow"></span></div><h3>${esc(label)}</h3><p>${esc(detail)}</p></div>`}

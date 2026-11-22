@@ -5,11 +5,11 @@ import { runInNewContext } from 'node:vm';
 
 const app = readFileSync(new URL('../dist/app.js', import.meta.url), 'utf8');
 
-function openSwap(hash = '#swap') {
+function openSwap(hash = '#swap', balanceOverrides = {}, activity = []) {
   const location = { hash };
   const nodes = new Map();
-  const balances = { ZRO: 1000, USDT0: 150, PYUSD: 125, weETH: 2 };
-  const storage = new Map([['canopy-zero-state', JSON.stringify({ balances, staked: 0, rewards: 0, activity: [] })]]);
+  const balances = { ZRO: 1000, USDT0: 150, PYUSD: 125, weETH: 2, ...balanceOverrides };
+  const storage = new Map([['canopy-zero-state', JSON.stringify({ balances, staked: 0, rewards: 0, activity })]]);
   const chartPanel = { open: true, dataset: {}, isConnected: true };
   const embeds = [];
   const navigatingBridge = hash === '#bridge' || hash === '#swap/bridge';
@@ -19,8 +19,12 @@ function openSwap(hash = '#swap') {
       nodes.set(selector, {
         dataset: {},
         listeners: {},
-        setAttribute() {},
-        addEventListener(type, callback) { this.listeners[type] = callback; },
+        attributes: {},
+        setAttribute(name, value) { this.attributes[name] = value; },
+        addEventListener(type, callback) {
+          const previous = this.listeners[type];
+          this.listeners[type] = previous ? (...args) => { previous(...args); callback(...args); } : callback;
+        },
         classList: { add() {}, remove() {} },
         before() {},
         showModal() { this.open = true; },
@@ -31,6 +35,14 @@ function openSwap(hash = '#swap') {
     return nodes.get(selector);
   }
   Object.assign(element('#swap-chart-panel'), chartPanel);
+  for (const group of ['trade', 'stake']) {
+    const buttons = [25, 50, 75, 100].map(percent => {
+      const button = element(`${group}-percent-${percent}`);
+      button.dataset.amountPercent = String(percent);
+      return button;
+    });
+    element(`#${group}-amount-shortcuts`).querySelectorAll = () => buttons;
+  }
   element('#from-asset').value = 'ZRO';
   element('#to-asset').value = navigatingBridge ? 'ZRO' : 'USDT0';
   element('#from-network').value = 'Ethereum';
@@ -61,7 +73,7 @@ function openSwap(hash = '#swap') {
     progress: () => '',
     transaction() {}
   };
-  runInNewContext(app, {
+  const sandbox = {
     window,
     document,
     CanopyUI,
@@ -71,8 +83,9 @@ function openSwap(hash = '#swap') {
       setItem: (key, value) => storage.set(key, value)
     },
     setTimeout: callback => callback()
-  });
-  return { element, storage, embeds, location, balances };
+  };
+  runInNewContext(app, sandbox);
+  return { element, storage, embeds, location, balances, openStake: () => sandbox.stakeModal('ZRO') };
 }
 
 test('swap offers Zero ecosystem examples and updates the selected pair and logos', () => {
@@ -145,6 +158,8 @@ test('Bridge is a ZRO-only tab in the Swap workspace, including on the old Bridg
     const state = JSON.parse(storage.get('canopy-zero-state'));
     assert.equal(state.balances.ZRO, balances.ZRO);
     assert.equal(state.activity[0].type, 'Bridge');
+    assert.deepEqual(state.activity[0].symbols, ['ZRO']);
+    assert.match(element('#main').innerHTML, /activity-asset-icons[^>]*><img data-token="ZRO"/);
     assert.match(state.activity[0].detail, /Zero \(demo\) to Ethereum/);
   }
 });
@@ -158,4 +173,52 @@ test('the Zero portfolio omits cash controls and discovery cards, while Markets 
   assert.match(markets, /On your radar/);
   assert.match(markets, /data-mini="stocks"/);
   assert.match(markets, /data-mini="memes"/);
+});
+
+test('Swap and Bridge shortcuts fill the pay amount and recalculate the quote', () => {
+  for (const hash of ['#swap', '#swap/bridge']) {
+    const { element } = openSwap(hash);
+    assert.match(element('#main').innerHTML, /25%.*50%.*75%.*Max/);
+    for (const percent of [25, 50, 75, 100]) {
+      const shortcut = element(`trade-percent-${percent}`);
+      shortcut.onclick();
+      assert.equal(Number(element('#amount').value), 10 * percent);
+      assert.equal(shortcut.attributes['aria-pressed'], 'true');
+      assert.ok(Number(element('#receive').value) > 0);
+      assert.equal(element('#review-trade').disabled, false);
+    }
+  }
+
+  const { element } = openSwap('#swap', { weETH: 0.2, PYUSD: 0 });
+  element('#from-asset').value = 'weETH';
+  element('#from-asset').onchange();
+  element('trade-percent-75').onclick();
+  assert.equal(element('#amount').value, '0.15');
+  element('#from-asset').value = 'PYUSD';
+  element('#from-asset').onchange();
+  assert.equal(element('trade-percent-100').disabled, true);
+  assert.equal(element('trade-percent-75').attributes['aria-pressed'], 'false');
+});
+
+test('a Stake shortcut uses available ZRO and can be confirmed', () => {
+  const { element, openStake, storage } = openSwap('#stake');
+  openStake();
+  assert.match(element('#modal-content').innerHTML, /25%.*50%.*75%.*Max/);
+  element('stake-percent-75').onclick();
+  assert.equal(element('#stake-amount').value, '750');
+  element('#confirm-stake').onclick();
+  const state = JSON.parse(storage.get('canopy-zero-state'));
+  assert.equal(state.balances.ZRO, 250);
+  assert.equal(state.staked, 990);
+});
+
+
+test('previous swaps and transfers show token marks without stored symbol metadata', () => {
+  const activity = [
+    { type: 'Swap', detail: '1,200 ZRO to 2,991 USDT0', time: '10:00 AM' },
+    { type: 'Bridge', detail: '500 ZRO · Ethereum to Zero (demo)', time: '10:01 AM' },
+  ];
+  const html = openSwap('#activity', {}, activity).element('#main').innerHTML;
+  assert.match(html, /activity-asset-icons activity-asset-pair[^>]*><img data-token="ZRO" alt=""><img data-token="USDT0"/);
+  assert.match(html, /activity-asset-icons [^>]*><img data-token="ZRO"[^>]*><\/span>/);
 });

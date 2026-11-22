@@ -112,7 +112,7 @@ function portfolio(){
   </div>
   <section class="holdings">
     <div class="card-top"><div class="section-tabs"><button data-hold="assets" class="${holdTab==='assets'?'active':''}">Holdings <span class="count">${held.length}</span></button><button data-hold="activity" class="${holdTab==='activity'?'active':''}">Recent activity</button></div><span class="data-caption">Sample balances</span></div>
-    ${holdTab==='activity'?activityRows():`<table><thead><tr><th>Asset</th><th class="price-col">Sample price</th><th>Balance</th></tr></thead><tbody>${held.map(asset=>`<tr><td><button class="quiet asset-button" data-asset="${asset.symbol}">${assetName(asset)}</button></td><td class="price-col">${money(asset.price)}</td><td>${money(asset.price*state.balances[asset.symbol])}<small>${num(state.balances[asset.symbol])} ${asset.symbol}</small></td></tr>`).join('')}</tbody></table>`}
+    ${holdTab==='activity'?activityRows():`<table><thead><tr><th>Asset</th><th class="price-col">Sample price</th><th>Balance</th></tr></thead><tbody>${held.map(asset=>`<tr data-asset="${asset.symbol}"><td><button class="quiet asset-button" aria-label="View ${asset.name} (${asset.symbol})" data-asset="${asset.symbol}">${assetName(asset)}</button></td><td class="price-col">${money(asset.price)}</td><td>${money(asset.price*state.balances[asset.symbol])}<small>${num(state.balances[asset.symbol])} ${asset.symbol}</small></td></tr>`).join('')}</tbody></table>`}
     ${holdTab==='assets'?'<p class="form-note">ZRO is native to Zero. The other holdings are LayerZero ecosystem examples with simulated balances.</p>':''}
   </section>`;
 }
@@ -131,6 +131,39 @@ const tradeDrafts = {
 
 function tradeOptions(items, selected) {
   return items.map(item => `<option ${item === selected ? 'selected' : ''}>${item}</option>`).join('');
+}
+
+function amountShortcuts(id) {
+  return `<div class="amount-shortcuts" id="${id}" role="group" aria-label="Percentage of available balance">${[25, 50, 75, 100].map(percent=>`<button type="button" data-amount-percent="${percent}" aria-pressed="false">${percent===100?'Max':`${percent}%`}</button>`).join('')}</div>`;
+}
+
+function mountAmountShortcuts(group, input, getBalance, onChange) {
+  const buttons = group.querySelectorAll('[data-amount-percent]');
+  const choice = button => {
+    const balance = getBalance() ?? 0;
+    const percent = Number(button.dataset.amountPercent);
+    // Preserve the exact stored balance for Max and avoid floating-point tails for fractions.
+    return percent === 100 ? balance : Number((balance * (percent / 100)).toPrecision(15));
+  };
+  const refresh = () => {
+    for (const button of buttons) {
+      const amount = choice(button);
+      button.disabled = !(amount > 0);
+      button.setAttribute('aria-pressed', String(!button.disabled && Number(input.value) === amount));
+    }
+  };
+  for (const button of buttons) {
+    button.onclick = () => {
+      const amount = choice(button);
+      if (!(amount > 0)) return;
+      input.value = String(amount);
+      onChange?.();
+      refresh();
+    };
+  }
+  input.addEventListener('input', refresh);
+  refresh();
+  return refresh;
 }
 
 function demoTrade() {
@@ -157,7 +190,7 @@ function demoTrade() {
             <span id="pay-token-logo" class="inline-token"></span>
             <select aria-label="Pay asset" id="from-asset">${tradeOptions(tokens, draft.from)}</select>
           </div>
-          <div class="field-bottom"><span id="pay-usd"></span><button id="max">Use max</button></div>
+          <div class="field-bottom"><span id="pay-usd"></span>${amountShortcuts('trade-amount-shortcuts')}</div>
         </div>
         <button class="switch" id="reverse" aria-label="Reverse ${bridge ? 'networks' : 'assets'}">
           ${CanopyUI.graphic('<path d="M8 17V7m-3 3 3-3 3 3m5-3v10m-3-3 3 3 3-3"/>')}
@@ -213,15 +246,18 @@ function mountDemoTrade() {
   const destination = $('#to-network');
   amount.value = draft.amount;
   amount.addEventListener('input', updateQuote);
+  const refreshShortcuts = mountAmountShortcuts($('#trade-amount-shortcuts'), amount, () => state.balances[from.value], updateQuote);
 
   // Keep the two tokens distinct when either picker selects the token on the other side.
   from.onchange = () => {
     if (!bridge && from.value === to.value) to.value = draft.from;
     updateQuote();
+    refreshShortcuts();
   };
   to.onchange = () => {
     if (!bridge && from.value === to.value) from.value = draft.to;
     updateQuote();
+    refreshShortcuts();
   };
   if (bridge) {
     source.onchange = updateQuote;
@@ -234,10 +270,6 @@ function mountDemoTrade() {
       if (chartPanel.open) hydrateCharts();
     });
   }
-  $('#max').onclick = () => {
-    amount.value = state.balances[from.value];
-    updateQuote();
-  };
   $('#reverse').onclick = () => {
     if (bridge) {
       [source.value, destination.value] = [destination.value, source.value];
@@ -245,6 +277,7 @@ function mountDemoTrade() {
       [from.value, to.value] = [to.value, from.value];
     }
     updateQuote();
+    refreshShortcuts();
   };
   $('#review-trade').onclick = reviewTrade;
   updateQuote();
@@ -281,7 +314,31 @@ function stake(){
   <div class="staking-hero"><section class="card staking-total"><div class="label">Your staked balance</div><div class="big-number">${num(state.staked)} ZRO</div><div class="stat-row zero-stats"><div><span class="label">Demo rewards</span><div class="value">${num(state.rewards)} ZRO</div></div><div><button class="secondary" data-action="claim" ${state.rewards<=0?'disabled':''}>Claim demo rewards</button></div></div></section>
   <section class="card staking-card">${assetName(zro)}<h2>Delegate ZRO</h2><p>Available in demo: ${num(state.balances.ZRO)} ZRO</p><button class="secondary" data-stake="ZRO" ${state.balances.ZRO<=0?'disabled':''}>Stake demo ZRO</button></section></div>`;
 }
-function activityRows(kind){const events=state.activity.filter(entry=>!kind||entry.type===kind);return events.length?events.slice().reverse().map(a=>`<div class="activity-row"><span class="coin">${a.type==='Swap'?'⇄':a.type==='Stake'?'✳':'◈'}</span><div>${a.type}<small>${a.detail}</small></div><span class="positive">Simulated<small>${a.time}</small></span></div>`).join(''):'<div class="empty"><div style="font-size:30px;margin-bottom:14px">◷</div>No moves yet.<small>Your demo swaps, bridges, and staking activity will appear here.</small></div>'}
+const activityText=value=>String(value??'').replace(/[&<>"']/g,character=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
+}[character]));
+
+function activityIcons(entry){
+  // Earlier demo entries have text only. Recover known symbols from their amounts.
+  const symbols=Array.isArray(entry.symbols) ? entry.symbols :
+    Array.from(String(entry.detail ?? '').matchAll(/(?:^|\s)\$?\d[\d,.]*\s+([A-Za-z][A-Za-z0-9]*)\b/g),match=>match[1]);
+  const tokens=[...new Set(symbols)].filter(symbol=>assets.some(asset=>asset.symbol===symbol)).slice(0,2);
+  const fallback=entry.type==='Bridge' ? icons.bridge : entry.type==='Swap' ? icons.swap : icons.stake;
+  return `<span class="activity-asset-icons ${tokens.length===2?'activity-asset-pair':''}" aria-hidden="true">${tokens.length?tokens.map(symbol=>CanopyUI.token(symbol)).join(''):CanopyUI.graphic(fallback)}</span>`;
+}
+
+function activityRows(kind){
+  const entries=state.activity.filter(entry=>entry&&(!kind||entry.type===kind));
+  if(!entries.length){
+    const detail=kind==='Bridge'?'Simulated transfers will appear here.':kind==='Swap'?'Simulated swaps will appear here.':'Your demo swaps, bridges, and staking activity will appear here.';
+    return `<div class="empty">${CanopyUI.graphic(icons.activity)}<div>No moves yet.<small>${detail}</small></div></div>`;
+  }
+  return entries.reverse().map(entry=>`<div class="activity-row">
+    ${activityIcons(entry)}
+    <div class="activity-copy">${activityText(entry.type)}<small>${activityText(entry.detail)}</small></div>
+    <span class="positive">Simulated<small>${activityText(entry.time)}</small></span>
+  </div>`).join('');
+}
 function activity(){return heading('Activity','History of your simulated transfers, swaps, and staking.')+`<section class="card activity-card">${activityRows()}</section>`}
 function comingSoon(section){
   const perps=section==='perps';
@@ -349,9 +406,36 @@ function updateQuote() {
   review.textContent = error || `Review demo ${tradeMode}`;
 }
 
-function showModal(html){$('#modal').classList.remove('chart-modal');$('#modal-content').innerHTML=`<button class="close" aria-label="Close dialog">×</button>${html}`;$('#modal').showModal();CanopyUI.enter($('#modal-content'));$('.close').onclick=()=>$('#modal').close()}
+const appDialog = $('#modal');
+function showModal(html) {
+  const content = $('#modal-content');
+  appDialog.classList.remove('chart-modal');
+  content.innerHTML = `<button type="button" class="close" aria-label="Close dialog">×</button>${html}`;
+  const closeButton = $('#modal-content .close');
+  closeButton.onclick = () => appDialog.close();
+  if (!appDialog.open) appDialog.showModal();
+  else if (!content.contains(document.activeElement)) closeButton.focus({ preventScroll: true });
+  CanopyUI.enter(content);
+}
+
+let backdropPressed = false;
+function isBackdropEvent(event) {
+  if (event.target !== appDialog) return false;
+  const { left, right, top, bottom } = appDialog.getBoundingClientRect();
+  return event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom;
+}
+appDialog.addEventListener('pointerdown', event => { backdropPressed = isBackdropEvent(event); });
+appDialog.addEventListener('pointercancel', () => { backdropPressed = false; });
+appDialog.addEventListener('click', event => {
+  if (backdropPressed && isBackdropEvent(event)) appDialog.close();
+  backdropPressed = false;
+});
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),3200)}
-function log(type,detail){state.activity.push({type,detail,time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})});persist()}
+function log(type,detail,symbols=[]){
+  const time=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  state.activity.push({type,detail,symbols,time});
+  persist();
+}
 let simulatingTrade = false;
 function reviewTrade() {
   if (simulatingTrade) {
@@ -394,7 +478,7 @@ function reviewTrade() {
         state.balances[from] -= amount;
         state.balances[to] = (state.balances[to] ?? 0) + received;
       }
-      log(activityType, bridge ? `${num(amount)} ${from} · ${route}` : `${num(amount)} ${from} to ${num(received)} ${to}`);
+      log(activityType, bridge ? `${num(amount)} ${from} · ${route}` : `${num(amount)} ${from} to ${num(received)} ${to}`, bridge ? [from] : [from,to]);
       if (modal.open && modal.contains(button)) modal.close();
       render();
       toast(`${activityType} simulation complete`);
@@ -425,13 +509,18 @@ function assetDetail(symbol){
 }
 function stakeModal(symbol){
   if(symbol!=='ZRO')return;
-  showModal(`<h2>Stake demo ZRO</h2><p>Move sample ZRO from your available balance to your staked total.</p><label class="modal-label" for="stake-amount">Amount · Available ${num(state.balances.ZRO)} ZRO</label><input class="modal-input" type="number" min="0" step="any" id="stake-amount" value="${Math.min(1,state.balances.ZRO)}"><p id="stake-error" class="negative" role="status"></p><button class="primary full" id="confirm-stake">Simulate stake</button>`);
+  showModal(`<h2>Stake demo ZRO</h2><p>Move sample ZRO from your available balance to your staked total.</p><label class="modal-label" for="stake-amount">Amount · Available ${num(state.balances.ZRO)} ZRO</label><input class="modal-input" type="number" inputmode="decimal" min="0" step="any" id="stake-amount" value="${Math.min(1,state.balances.ZRO)}">${amountShortcuts('stake-amount-shortcuts')}<p id="stake-error" class="negative" role="status"></p><button class="primary full" id="confirm-stake">Simulate stake</button>`);
+  const input=$('#stake-amount');
+  const error=$('#stake-error');
+  const clearError=()=>{error.textContent='';};
+  mountAmountShortcuts($('#stake-amount-shortcuts'), input, () => state.balances.ZRO, clearError);
+  input.addEventListener('input', clearError);
   $('#confirm-stake').onclick=()=>{
-    const amount=Number($('#stake-amount').value);
-    if(!Number.isFinite(amount)||amount<=0||amount>state.balances.ZRO){$('#stake-error').textContent='Enter an amount within your available balance.';return;}
+    const amount=Number(input.value);
+    if(!Number.isFinite(amount)||amount<=0||amount>state.balances.ZRO){error.textContent='Enter an amount within your available balance.';return;}
     state.balances.ZRO-=amount;
     state.staked+=amount;
-    log('Stake',`${num(amount)} ZRO`);
+    log('Stake',`${num(amount)} ZRO`,['ZRO']);
     $('#modal').close();render();toast(`${num(amount)} ZRO staked in demo`);
   };
 }
@@ -442,7 +531,7 @@ function claimDemoRewards(){
     const rewards=state.rewards;
     state.balances.ZRO+=rewards;
     state.rewards=0;
-    log('Claim',`${num(rewards)} ZRO rewards`);
+    log('Claim',`${num(rewards)} ZRO rewards`,['ZRO']);
     $('#modal').close();render();toast('Demo rewards claimed');
   };
 }
@@ -467,7 +556,6 @@ document.addEventListener('click',event=>{
   if(action.stake)stakeModal(action.stake);
   if(action.action==='claim')claimDemoRewards();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('tr[data-asset]'))assetDetail(e.target.dataset.asset)});
 $('#reset').onclick=()=>{showModal('<h2>Start fresh?</h2><p>This resets only your local demo balances and simulated activity.</p><button class="primary full" id="confirm-reset">Reset demo</button>');$('#confirm-reset').onclick=()=>{localStorage.removeItem(demoStateKey);location.reload()}};
 function setTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('canopy-zero-theme',theme);$('#appearance').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').title=`Switch to ${theme==='light'?'dark':'light'} mode`;$('#mobile-theme').setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} mode`);$('#appearance').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;$('#mobile-theme').innerHTML=theme==='light'?CanopyUI.moon:CanopyUI.sun;document.querySelectorAll('[data-tv]').forEach(el=>{delete el.dataset.loaded;el.innerHTML=''});hydrateCharts()}
 $('#mobile-theme').onclick=()=>$('#appearance').click();
@@ -476,4 +564,8 @@ $('#global-search').onclick=()=>{location.hash='markets';render();$('#search').f
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();$('#global-search').click()}});
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.pin){const symbol=b.dataset.pin;watchlist=watchlist.includes(symbol)?watchlist.filter(x=>x!==symbol):[...watchlist,symbol];localStorage.setItem('canopy-zero-watchlist',JSON.stringify(watchlist));if(page==='markets')$('#market-rows').innerHTML=marketRows($('#search').value);if($('#modal').open){b.textContent=watchlist.includes(symbol)?'Remove from watchlist':'Add to watchlist'}toast(watchlist.includes(symbol)?`${symbol} added to watchlist`:`${symbol} removed from watchlist`)}if(b.dataset.selectMarket){selectedSymbol=b.dataset.selectMarket;$('#selected-market').innerHTML=marketChartTitle(selectedSymbol);$('#market-live').innerHTML=liveChart(selectedSymbol,'markets-chart');$('#market-rows').innerHTML=marketRows($('#search').value);hydrateCharts()}});
 setTheme(document.documentElement.dataset.theme||'light');
-window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);$('.shell').scrollTo(0,0)});render();
+window.addEventListener('hashchange',()=>{
+  if(appDialog.open)appDialog.close();
+  render();window.scrollTo(0,0);$('.shell').scrollTo(0,0);
+});
+render();

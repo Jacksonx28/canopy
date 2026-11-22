@@ -121,3 +121,42 @@ html:not(.welcome-open) #main{visibility:visible}
 }
 .zero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 .zero-stats>div:last-child{grid-column:auto}
+
+/* Quick trade and stake amounts */
+.amount-shortcuts{display:flex;flex-wrap:wrap;gap:5px}
+.field-bottom:has(.amount-shortcuts){flex-wrap:wrap;gap:8px}
+.amount-shortcuts button{min-height:30px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--muted);font:600 12px var(--font)}
+.amount-shortcuts button[aria-pressed=true]{border-color:color-mix(in srgb,var(--lime) 40%,var(--line));background:color-mix(in srgb,var(--lime) 12%,var(--panel));color:var(--lime)}
+.amount-shortcuts button:disabled{opacity:.45;cursor:default}
+#stake-amount-shortcuts{margin-top:12px}
+
+.coin.asset-logo,.asset-logo img,.coin.asset-logo .brand-mark{border-radius:5px}
+.token-art>.asset-logo,.token-art>.asset-logo img{border-radius:8px}
+.wallet-provider-icon img,.splash-wallet-marks img{border-radius:5px}
+.activity-asset-icons{display:inline-flex;flex:0 0 30px;align-items:center;justify-content:flex-start;color:var(--muted)}
+.activity-row .activity-asset-icons .coin{display:inline-flex;width:29px;height:29px;margin:0}
+.activity-asset-icons>.ui-icon{width:23px;height:23px}
+.activity-asset-pair{flex-basis:47px}
+.activity-asset-pair .coin+.coin{margin-inline-start:-11px}
+.activity-copy{min-width:0}
+.activity-row .activity-copy small{line-height:1.4}
+.recent-panel .empty>.ui-icon,.activity-card .empty>.ui-icon{display:block;width:22px;height:22px;margin:0 auto 10px}
+.holdings tbody tr[data-asset]{cursor:pointer}
+.holdings tbody tr[data-asset] td{transition:background-color .16s ease}
+.holdings tbody tr[data-asset]>td:first-child{border-radius:10px 0 0 10px}
+.holdings tbody tr[data-asset]>td:last-child{border-radius:0 10px 10px 0}
+.holdings tbody tr[data-asset]:focus-within td{background:var(--panel2)}
+.holdings tbody tr[data-asset]:active td{background:color-mix(in srgb,var(--lime) 12%,var(--panel))}
+.market-row.selected{position:relative;box-shadow:none;background:color-mix(in srgb,var(--lime) 8%,var(--panel))}
+.market-row.selected::before{content:'';position:absolute;inset-block:22%;inset-inline-start:0;width:3px;border-radius:999px;background:var(--lime);pointer-events:none}
+.trade-tabs a,.segments button{transition:color .18s ease,border-color .18s ease,background-color .18s ease,transform .16s ease}
+.trade-tabs a.active,.segments button.active,.section-tabs button.active::after{border-radius:3px}
+.section-tabs button:focus-visible,.segments button:focus-visible,.trade-tabs a:focus-visible{border-radius:6px}
+.amount-shortcuts button{transition:background-color .18s ease,border-color .18s ease,color .18s ease}
+@media(hover:hover){.holdings tbody tr[data-asset]:hover td{background:var(--panel2)}}
+@media(max-width:720px){
+  .activity-row .activity-asset-icons .coin{width:23px;height:23px}
+  .activity-asset-icons{flex-basis:23px}
+  .activity-asset-pair{flex-basis:38px}
+  .activity-asset-pair .coin+.coin{margin-inline-start:-8px}
+}

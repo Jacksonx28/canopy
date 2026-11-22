@@ -235,7 +235,9 @@ function comingSoon(section){
 }
 function render(){
   range='1W';
-  const route=location.hash.slice(1).split('/')[0];
+  const fragment=location.hash.slice(1).split('/')[0];
+  // Keep the submitted #testnet URL working without changing its address.
+  const route=fragment==='testnet'?'swap':fragment;
   page=Object.hasOwn(names,route)?route:'portfolio';
   nav();
   const views={portfolio,markets,swap:()=>demoTrade(false),bridge:()=>demoTrade(true),stake,perps:()=>comingSoon('perps'),rewards:()=>comingSoon('rewards'),activity};

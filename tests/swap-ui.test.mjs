@@ -5,7 +5,8 @@ import { runInNewContext } from 'node:vm';
 
 const app = readFileSync(new URL('../dist/app.js', import.meta.url), 'utf8');
 
-function openSwap() {
+function openSwap(hash = '#swap') {
+  const location = { hash };
   const nodes = new Map();
   const storage = new Map();
   const chartPanel = { open: true, dataset: {}, isConnected: true };
@@ -59,14 +60,14 @@ function openSwap() {
     window,
     document,
     CanopyUI,
-    location: { hash: '#swap' },
+    location,
     localStorage: {
       getItem: key => storage.get(key),
       setItem: (key, value) => storage.set(key, value)
     },
     setTimeout: callback => callback()
   });
-  return { element, storage, embeds };
+  return { element, storage, embeds, location };
 }
 
 function activeMarket(embeds) {
@@ -111,4 +112,12 @@ test('a confirmed swap records a simulation and updates the local demo balances'
   assert.equal(state.balances.ETH, 5.24 - 1);
   assert.ok(state.balances.USDC > 10850.01);
   assert.equal(state.activity[0].type, 'Swap');
+});
+
+test('the submitted #testnet deep link opens demo swap and keeps its URL fragment', () => {
+  const { element, embeds, location } = openSwap('#testnet');
+  assert.equal(location.hash, '#testnet');
+  assert.equal(element('#breadcrumb').textContent, 'Swap');
+  assert.match(element('#main').innerHTML, /Demo Mode/);
+  assert.equal(activeMarket(embeds), 'BINANCE:ETHUSDC');
 });

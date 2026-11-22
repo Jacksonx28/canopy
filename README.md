@@ -1,9 +1,10 @@
 # Canopy Zero
 
-Canopy Zero is a public demo of the Canopy workspace for the Zero ecosystem. The `canopy-zero` branch carries this edition. The original Canopy website is deployed independently from `main`.
+Canopy Zero is a public demo of the Canopy workspace for the Zero ecosystem. The `canopy-zero` branch carries this edition. GitHub Pages publishes this edition from `canopy-zero`. The original Canopy RH release is hosted separately from a snapshot of `main`.
 
+- [Canopy Zero on GitHub Pages](https://jacksonx28.github.io/canopy/dist/#testnet)
 - [Canopy Zero preview](https://canopy-zero.israeljackson854.chatgpt.site)
-- [Original Canopy](https://jacksonx28.github.io/canopy/)
+- [Canopy RH](https://canopy-rh.israeljackson854.chatgpt.site/#testnet)
 
 ## Run locally
 

@@ -156,10 +156,36 @@ function refreshRadar(){
 let tradeMode = 'swap';
 const bridgeTokens = ['ZRO'];
 const bridgeNetworks = ['Ethereum', 'Zero (demo)'];
+const slippagePresets = [0.1, 0.5, 1];
+const tradeFeePercent = {swap: 0.3, bridge: 0.1};
 const tradeDrafts = {
-  swap: {from: 'ZRO', to: 'USDT0', amount: '1', chartOpen: true},
-  bridge: {from: 'ZRO', to: 'ZRO', amount: '100', source: 'Ethereum', destination: 'Zero (demo)'}
+  swap: {from: 'ZRO', to: 'USDT0', amount: '1', chartOpen: true, slippage: '0.5', recipientMode: 'own', recipient: ''},
+  bridge: {from: 'ZRO', to: 'ZRO', amount: '100', source: 'Ethereum', destination: 'Zero (demo)', recipientMode: 'own', recipient: ''}
 };
+const amountText = amount => amount.toLocaleString('en-US', {maximumFractionDigits: 7});
+const isWalletAddress = address => /^0x[0-9a-f]{40}$/i.test(address) && !/^0x0{40}$/i.test(address);
+
+function tradeSettings(bridge) {
+  return `<div class="trade-settings">
+    ${bridge ? '' : `<div class="trade-setting">
+      <div class="trade-setting-label"><label for="trade-slippage">Slippage tolerance</label><small>Allowed price movement</small></div>
+      <div class="slippage-controls">
+        <div class="amount-shortcuts" role="group" aria-label="Slippage presets">${slippagePresets.map(percent => `<button type="button" data-slippage-percent="${percent}" aria-pressed="false">${percent}%</button>`).join('')}</div>
+        <div class="slippage-input"><input id="trade-slippage" type="number" min="0.01" max="5" step="any" inputmode="decimal" aria-label="Slippage tolerance (%)" aria-describedby="trade-slippage-note"><span aria-hidden="true">%</span></div>
+      </div>
+      <small class="trade-setting-note" id="trade-slippage-note">Choose 0.01% to 5%.</small>
+    </div>`}
+    <div class="trade-setting">
+      <div class="trade-setting-label"><label for="trade-recipient-mode">Recipient</label></div>
+      <select id="trade-recipient-mode" class="network-select"><option value="own">My demo wallet</option><option value="external">Another wallet</option></select>
+      <div class="trade-recipient-address" id="trade-recipient-address" hidden>
+        <label for="trade-recipient">Destination wallet address</label>
+        <input id="trade-recipient" class="modal-input" type="text" placeholder="0x…" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="96" aria-describedby="trade-recipient-note">
+        <small id="trade-recipient-note">EVM address for this simulated delivery.</small>
+      </div>
+    </div>
+  </div>`;
+}
 
 function tradeOptions(items, selected) {
   return items.map(item => `<option ${item === selected ? 'selected' : ''}>${item}</option>`).join('');
@@ -234,11 +260,13 @@ function demoTrade() {
             <span id="receive-token-logo" class="inline-token"></span>
             <select aria-label="Receive asset" id="to-asset" ${bridge ? 'disabled' : ''}>${tradeOptions(tokens, draft.to)}</select>
           </div>
-          <div class="field-bottom"><span id="receive-usd"></span><span>${bridge ? 'Same wallet address' : 'Includes demo fee'}</span></div>
+          <div class="field-bottom"><span id="receive-usd"></span><span>Includes demo fee</span></div>
         </div>
+        ${tradeSettings(bridge)}
         <div class="trade-details">
           <div><span>${bridge ? 'Demo arrival' : 'Sample exchange rate'}</span><b id="rate">${demoActivityDuration.Bridge/1000} seconds</b></div>
-          <div><span>${bridge ? 'Bridge fee' : 'Trading fee'}</span><b>${bridge ? '0.1%' : '0.3%'}</b></div>
+          ${bridge ? '' : '<div><span>Minimum received</span><b id="minimum-received">—</b></div>'}
+          <div><span>${bridge ? 'Bridge fee' : 'Trading fee'}</span><b>${tradeFeePercent[action]}%</b></div>
           <div><span>Network fee</span><b>Illustrative · $0.08</b></div>
         </div>
         <button class="primary full" id="review-trade">Review demo ${action}</button>
@@ -278,6 +306,18 @@ function mountDemoTrade() {
   const destination = $('#to-network');
   amount.value = draft.amount;
   amount.addEventListener('input', updateQuote);
+  $('#trade-recipient-mode').value = draft.recipientMode;
+  $('#trade-recipient-mode').onchange = updateQuote;
+  $('#trade-recipient').value = draft.recipient;
+  $('#trade-recipient').addEventListener('input', updateQuote);
+  if (!bridge) {
+    const slippage = $('#trade-slippage');
+    slippage.value = draft.slippage;
+    slippage.addEventListener('input', updateQuote);
+    for (const preset of document.querySelectorAll('[data-slippage-percent]')) {
+      preset.onclick = () => { slippage.value = preset.dataset.slippagePercent; updateQuote(); };
+    }
+  }
   const refreshShortcuts = mountAmountShortcuts($('#trade-amount-shortcuts'), amount, () => state.balances[from.value], updateQuote);
 
   // Keep the two tokens distinct when either picker selects the token on the other side.
@@ -376,21 +416,34 @@ function activityStatus(entry, now = Date.now()) {
   return {remaining, phase, label: phase === 'complete' ? 'Complete' : phase === 'source' ? 'Source pending' : entry.type === 'Bridge' ? 'In transit' : 'Processing'};
 }
 
+function activityEntries(kind='', phase='', now=Date.now()){
+  const entries=[];
+  for(let index=state.activity.length-1; index>=0; index--){
+    const entry=state.activity[index];
+    if(!entry||(kind&&entry.type!==kind))continue;
+    const status=activityStatus(entry,now);
+    if(phase&&(status.phase==='complete'?'complete':'pending')!==phase)continue;
+    entries.push({entry,index,status});
+  }
+  return entries;
+}
+
 function activityRows(kind){
-  const entries=state.activity.map((entry,index)=>({entry,index})).filter(({entry})=>entry&&(!kind||entry.type===kind));
+  return renderActivityRows(activityEntries(kind),kind);
+}
+
+function renderActivityRows(entries,kind,filtered=false){
   if(!entries.length){
+    if(filtered)return `<div class="empty">${CanopyUI.graphic(icons.activity)}<div>No matching activity.<small>Choose a different type or status.</small></div></div>`;
     const details={Bridge:'Simulated transfers will appear here.',Swap:'Simulated swaps will appear here.',Claim:'Your simulated ZRO claims will appear here.'};
     return `<div class="empty">${CanopyUI.graphic(icons.activity)}<div>${kind==='Claim'?'No claims yet.':'No moves yet.'}<small>${details[kind]||'Your demo swaps, bridges, and staking activity will appear here.'}</small></div></div>`;
   }
-  return entries.reverse().map(({entry,index})=>{
-    const status=activityStatus(entry);
-    return `<button type="button" class="activity-row activity-link" data-activity-index="${index}" aria-haspopup="dialog">
+  return entries.map(({entry,index,status})=>`<button type="button" class="activity-row activity-link" data-activity-index="${index}" aria-haspopup="dialog">
       ${activityIcons(entry)}
       <span class="activity-copy">${activityText(entry.type)}<small>${activityText(entry.detail)}</small></span>
       <span class="activity-status" data-activity-status="${index}" data-phase="${status.phase}"><span>${status.label}</span><small>${activityText(entry.time)}</small></span>
       ${CanopyUI.graphic('<path d="m10 7 5 5-5 5"/>','activity-chevron')}
-    </button>`;
-  }).join('');
+    </button>`).join('');
 }
 
 function activityTimeline(entry, status) {
@@ -399,7 +452,7 @@ function activityTimeline(entry, status) {
   const destinationNetwork = receipt?.destination || 'Destination network';
   const stages = entry.type==='Bridge'
     ? [ ['Submitted','Demo transfer created','done'], ['Source confirmation',sourceNetwork,status.phase==='source'?'current':'done'], ['Destination arrival',destinationNetwork,status.phase==='complete'?'done':status.phase==='delivery'?'current':'waiting'] ]
-    : [ ['Submitted','Demo activity recorded','done'], ['Completed',entry.type==='Swap'?'Sample balances updated':'Local demo balance updated',status.phase==='complete'?'done':'current'] ];
+    : [ ['Submitted','Demo activity recorded','done'], ['Completed',entry.type==='Swap'?(receipt?.recipient?'Simulated delivery to recipient':'Sample balances updated'):'Local demo balance updated',status.phase==='complete'?'done':'current'] ];
   return stages.map(([title,detail,state])=>`<li data-stage="${state}" ${state==='current'?'aria-current="step"':''}><span class="activity-node">${state==='done'?CanopyUI.graphic('<path d="m5 12 4 4L19 6"/>'):''}</span><span><strong>${title}</strong><small>${activityText(detail)}</small></span></li>`).join('');
 }
 
@@ -407,19 +460,61 @@ function activityCountdown(seconds) {
   return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 
+function createDemoHash() {
+  const bytes=crypto.getRandomValues(new Uint8Array(32));
+  return `0x${Array.from(bytes,byte=>byte.toString(16).padStart(2,'0')).join('')}`;
+}
+
+const receiptAmount=new Intl.NumberFormat('en-US',{maximumFractionDigits:12});
+function tradeReceiptDetails(receipt) {
+  if(!receipt || !Number.isFinite(receipt.amount) || !Number.isFinite(receipt.received) ||
+     !demoSwapTokens.includes(receipt.from) || !demoSwapTokens.includes(receipt.to)) return '';
+  const value=(amount,symbol)=>`${receiptAmount.format(amount)} ${symbol}`;
+  return `<dl class="activity-receipt-values">
+    <div><dt>Amount sent</dt><dd>${value(receipt.amount,receipt.from)}</dd></div>
+    <div><dt>Demo output</dt><dd>${value(receipt.received,receipt.to)}</dd></div>
+    ${Number.isFinite(receipt.minimumReceived)&&Number.isFinite(receipt.slippagePercent)?`<div><dt>Minimum received</dt><dd>${value(receipt.minimumReceived,receipt.to)}</dd></div><div><dt>Slippage tolerance</dt><dd>${receiptAmount.format(receipt.slippagePercent)}%</dd></div>`:''}
+    ${Number.isFinite(receipt.feePercent)?`<div><dt>Demo fee</dt><dd>${receiptAmount.format(receipt.feePercent)}%</dd></div>`:''}
+    <div><dt>Recipient</dt><dd ${receipt.recipient?'class="receipt-address"':''}>${receipt.recipient?activityText(receipt.recipient):'Your demo wallet'}</dd></div>
+  </dl>`;
+}
+
 function openActivityDetails(index) {
-  const entry = state.activity[index];
-  if (!entry) return;
-  const status = activityStatus(entry);
-  const title = {Bridge:'Transfer status',Swap:'Swap status',Stake:'Stake status',Claim:'Claim status'}[entry.type] || 'Activity details';
+  const entry=state.activity[index];
+  if(!entry)return;
+  if(!/^0x[0-9a-f]{64}$/.test(entry.demoHash||'')){
+    entry.demoHash=createDemoHash();
+    try { persist(); } catch {}
+  }
+  const status=activityStatus(entry);
+  const title={Bridge:'Transfer status',Swap:'Swap status',Stake:'Stake status',Claim:'Claim status'}[entry.type]||'Activity details';
+  const receipt=entry.receipt;
+  const details=tradeReceiptDetails(receipt);
+  const description=details?(entry.type==='Bridge'?`${receipt.source} to ${receipt.destination}`:''):entry.detail;
   showModal(`<div class="activity-tracker" id="activity-tracker" data-activity-index="${index}" data-phase="${status.phase}">
     <div class="activity-tracker-header"><span class="tag">Demo Mode</span>${CanopyUI.graphic('<path d="M5 19C5 10 11 5 20 4c0 9-5 15-14 15m0 0L16 9M10 15h5"/>','activity-leaf')}</div>
     <div class="activity-tracker-title">${activityIcons(entry)}<h2>${title}</h2></div>
-    <p class="activity-description">${activityText(entry.detail)}</p>
+    ${description?`<p class="activity-description">${activityText(description)}</p>`:''}
     <div class="activity-tracker-state"><div><span class="data-caption">Status</span><strong data-status-label role="status">${status.label}</strong></div><div data-activity-eta ${status.remaining?'':'hidden'}><span class="data-caption">Demo time remaining</span><strong data-activity-countdown role="timer">${activityCountdown(status.remaining)}</strong></div></div>
     <ol class="activity-timeline" aria-label="Demo transaction stages">${activityTimeline(entry,status)}</ol>
-    <p class="form-note">${entry.type==='Bridge'?'Simulated route. No assets move and destination balances do not change.':'This activity uses your sample balances. No onchain transaction was sent.'}</p>
+    ${details}
+    <div class="demo-hash"><label class="data-caption" for="demo-hash-value">Demo transaction hash</label><div class="demo-hash-controls"><input id="demo-hash-value" readonly spellcheck="false" value="${entry.demoHash}" dir="ltr"><button type="button" class="secondary" id="copy-demo-hash" aria-label="Copy demo transaction hash">Copy</button></div><span class="data-caption" id="demo-hash-feedback" role="status" hidden></span></div>
+    <p class="form-note">${entry.type==='Bridge'?'Simulated route. No assets move and destination balances do not change.':receipt?.recipient?'Delivery is simulated. The recipient receives no real assets.':'This activity uses your sample balances. No onchain transaction was sent.'}</p>
   </div>`);
+  const copy=$('#copy-demo-hash');
+  const input=$('#demo-hash-value');
+  const feedback=$('#demo-hash-feedback');
+  copy.onclick=async()=>{
+    try{
+      await navigator.clipboard.writeText(entry.demoHash);
+      feedback.textContent='Demo hash copied.';
+    }catch{
+      input.focus({preventScroll:true});
+      input.select();
+      feedback.textContent='Hash selected. Use your device’s copy action.';
+    }
+    feedback.hidden=false;
+  };
   scheduleActivityTick();
 }
 
@@ -448,7 +543,7 @@ function settleDueActivity(now = Date.now()) {
   let settled=false;
   for(const entry of state.activity.filter(due)){
     const {receipt}=entry;
-    if(entry.type==='Swap' && demoSwapTokens.includes(receipt.to) && Number.isFinite(receipt.received) && receipt.received > 0){
+    if(entry.type==='Swap' && !receipt.recipient && demoSwapTokens.includes(receipt.to) && Number.isFinite(receipt.received) && receipt.received > 0){
       state.balances[receipt.to]+=receipt.received;
       changed=true;
     }
@@ -474,6 +569,7 @@ function refreshActivityStatus() {
     if(page==='swap') $('#amount').dispatchEvent(new Event('input'));
     if(page==='portfolio' || page==='stake') render(true);
   }
+  if(page==='activity') refreshFilteredActivity(now);
   for(const indicator of document.querySelectorAll('[data-activity-status]')){
     const entry=state.activity[Number(indicator.dataset.activityStatus)];
     if(!entry)continue;
@@ -501,7 +597,61 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden)clearTimeout(activityTimer);
   else refreshActivityStatus();
 });
-function activity(){return heading('Activity','History of your simulated transfers, swaps, and staking.')+`<section class="card activity-card">${activityRows()}</section>`}
+const activityFilterOptions={
+  type:[['','All types'],['Swap','Swaps'],['Bridge','Transfers'],['Stake','Staking'],['Claim','Claims']],
+  status:[['','All statuses'],['pending','Pending'],['complete','Complete']],
+};
+const activityFilterKey='canopy-zero-activity-filters';
+const activityFilters={type:'',status:''};
+try {
+  const saved=JSON.parse(sessionStorage.getItem(activityFilterKey));
+  for(const name of Object.keys(activityFilters)){
+    if(activityFilterOptions[name].some(([value])=>value===saved?.[name]))activityFilters[name]=saved[name];
+  }
+} catch {}
+
+function activityFilterSelect(name,label){
+  const options=activityFilterOptions[name].map(([value,text])=>`<option value="${value}" ${activityFilters[name]===value?'selected':''}>${text}</option>`).join('');
+  return `<label class="activity-filter"><span>${label}</span><select id="activity-filter-${name}" data-activity-filter="${name}">${options}</select></label>`;
+}
+
+function filteredActivity(now){
+  const {type,status}=activityFilters;
+  const entries=activityEntries(type,status,now);
+  const key=JSON.stringify([type,status,...entries.map(({entry,index})=>[index,entry.type,entry.time,entry.detail])]);
+  return {entries,key,filtered:Boolean(type||status)};
+}
+
+function refreshFilteredActivity(now=Date.now()){
+  const results=$('#activity-results');
+  if(!results)return;
+  const {entries,key,filtered}=filteredActivity(now);
+  if(results.dataset.view===key)return;
+  const focused=document.activeElement;
+  const focusedIndex=focused&&results.contains(focused) ? focused.dataset.activityIndex : null;
+  results.dataset.view=key;
+  results.innerHTML=renderActivityRows(entries,activityFilters.type,filtered);
+  if(focusedIndex!=null){
+    (results.querySelector(`[data-activity-index="${Number(focusedIndex)}"]`)||$('#activity-filter-status')).focus({preventScroll:true});
+  }
+}
+
+function activity(){
+  const {entries,key,filtered}=filteredActivity();
+  return heading('Activity','Review your demo transactions.')+`<section class="card activity-card">
+    <div class="activity-filters" role="group" aria-label="Filter activity">${activityFilterSelect('type','Type')}${activityFilterSelect('status','Status')}</div>
+    <div id="activity-results" data-view="${activityText(key)}">${renderActivityRows(entries,activityFilters.type,filtered)}</div>
+  </section>`;
+}
+
+document.addEventListener('change',event=>{
+  const target=event.target;
+  const name=target?.dataset?.activityFilter;
+  if(!Object.hasOwn(activityFilterOptions,name)||!activityFilterOptions[name].some(([value])=>value===target.value))return;
+  activityFilters[name]=target.value;
+  try { sessionStorage.setItem(activityFilterKey,JSON.stringify(activityFilters)); } catch {}
+  refreshFilteredActivity();
+});
 function comingSoon(){
   return heading('Perps','Perpetual markets on Zero.')+`<section class="card zero-roadmap"><div class="zero-roadmap-mark">${navIcon('perps')}</div><span class="tag">Coming soon</span><h2>A place for your positions.</h2><p>Explore perpetual markets and manage positions here once a Zero venue is integrated.</p><a class="secondary" href="#markets">Explore markets</a></section>`;
 }
@@ -559,14 +709,37 @@ function updateQuote() {
   const validAmount = Number.isFinite(amount) && amount > 0;
   const balance = state.balances[from] ?? 0;
   const rate = fromAsset.price / toAsset.price;
-  const received = validAmount ? Number((amount * rate * (bridge ? 0.999 : 0.997)).toFixed(7)) : 0;
+  const feePercent = tradeFeePercent[tradeMode];
+  const received = validAmount ? Number((amount * rate * (1 - feePercent / 100)).toFixed(7)) : 0;
+  const slippageInput = bridge ? null : $('#trade-slippage');
+  const slippagePercent = slippageInput ? Number(slippageInput.value) : null;
+  const validSlippage = bridge || (Number.isFinite(slippagePercent) && slippagePercent >= 0.01 && slippagePercent <= 5);
+  const minimumReceived = !bridge && validSlippage ? Math.floor(Math.round(received * 1e7) * (1 - slippagePercent / 100)) / 1e7 : null;
+  const recipientMode = $('#trade-recipient-mode').value;
+  const addressInput = $('#trade-recipient');
+  const recipient = recipientMode === 'external' ? addressInput.value.trim() : null;
+  const validRecipient = recipient === null || isWalletAddress(recipient);
+  $('#trade-recipient-address').hidden = recipient === null;
+  addressInput.setAttribute('aria-invalid', String(!validRecipient));
+  $('#trade-recipient-note').textContent = validRecipient ? 'EVM address for this simulated delivery.' : 'Enter a nonzero EVM wallet address.';
+  if (slippageInput) {
+    slippageInput.setAttribute('aria-invalid', String(!validSlippage));
+    for (const preset of document.querySelectorAll('[data-slippage-percent]')) {
+      preset.setAttribute('aria-pressed', String(validSlippage && Number(preset.dataset.slippagePercent) === slippagePercent));
+    }
+  }
+
   const error = !validAmount ? 'Enter an amount'
     : amount > balance ? 'Insufficient demo balance'
     : bridge && draft.source === draft.destination ? 'Choose different networks'
     : !bridge && from === to ? 'Choose different assets'
-    : received <= 0 ? 'Amount too small'
+    : !Number.isFinite(received) || received <= 0 ? 'Invalid quote amount'
+    : !validSlippage ? 'Enter valid slippage'
+    : !bridge && minimumReceived <= 0 ? 'Amount too small after slippage'
+    : !validRecipient ? 'Check the recipient address'
     : '';
-  Object.assign(draft, {from, to, amount: amountField.value});
+  Object.assign(draft, {from, to, amount: amountField.value, recipientMode, recipient: addressInput.value});
+  if (slippageInput) draft.slippage = slippageInput.value;
   $('#pay-token-logo').innerHTML = CanopyUI.token(from);
   $('#receive-token-logo').innerHTML = CanopyUI.token(to);
   $('#receive').value = validAmount ? received : '';
@@ -575,11 +748,13 @@ function updateQuote() {
   $('#receive-usd').textContent = money(received * toAsset.price);
   if (!bridge) {
     $('#rate').textContent = `1 ${from} = ${rate.toLocaleString('en-US', {maximumSignificantDigits: 6})} ${to}`;
+    $('#minimum-received').textContent = minimumReceived > 0 ? `${amountText(minimumReceived)} ${to}` : '—';
     updateSwapChart(from, to);
   }
   const review = $('#review-trade');
   review.disabled = Boolean(error);
   review.textContent = error || `Review demo ${tradeMode}`;
+  return error ? null : {from, to, amount, received, minimumReceived, slippagePercent, feePercent, recipient};
 }
 
 const appDialog = $('#modal');
@@ -609,17 +784,16 @@ appDialog.addEventListener('click', event => {
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),3200)}
 function log(type,detail,symbols=[],receipt){
   const time=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-  const index=state.activity.push({type,detail,symbols,time,receipt})-1;
+  const index=state.activity.push({type,detail,symbols,time,receipt,demoHash:createDemoHash()})-1;
   persist();
   return index;
 }
 function reviewTrade() {
   const action = tradeMode;
   const bridge = action === 'bridge';
-  const from = $('#from-asset').value;
-  const to = $('#to-asset').value;
-  const amount = Number($('#amount').value);
-  const received = Number($('#receive').value);
+  const quote = updateQuote();
+  if (!quote) return;
+  const {from, to, amount, received, minimumReceived, slippagePercent, feePercent, recipient} = quote;
   const source = bridge ? $('#from-network').value : null;
   const destination = bridge ? $('#to-network').value : null;
   const route = bridge ? `${source} to ${destination}` : '';
@@ -628,12 +802,16 @@ function reviewTrade() {
     <h2>Review demo ${action}</h2>
     <p>${bridge ? route : 'Check amounts and fees before confirming.'}</p>
     <div class="trade-details">
-      <div><span>You pay</span><b>${num(amount)} ${from}</b></div>
-      <div><span>You receive</span><b>${num(received)} ${to}</b></div>
+      <div><span>You pay</span><b>${amountText(amount)} ${from}</b></div>
+      <div><span>Estimated receipt</span><b>${amountText(received)} ${to}</b></div>
+      ${bridge ? '' : `<div><span>Minimum received</span><b>${amountText(minimumReceived)} ${to}</b></div><div><span>Slippage tolerance</span><b>${slippagePercent}%</b></div>`}
+      <div><span>${bridge ? 'Bridge fee' : 'Trading fee'}</span><b>${feePercent}%</b></div>
+      <div><span>Network fee</span><b>Illustrative · $0.08</b></div>
+      <div><span>Recipient</span><b class="trade-review-recipient">${recipient || 'My demo wallet'}</b></div>
       <div><span>Demo timing</span><b>${demoActivityDuration[type]/1000} seconds</b></div>
       <div><span>Mode</span><b>Simulation only</b></div>
     </div>
-    <p>${bridge ? 'This records a demo bridge route. Destination balances are not connected.' : 'Sample tokens arrive in your portfolio after the countdown.'} No real assets will move.</p>
+    <p>${bridge ? 'This records a demo bridge route. Destination balances are not connected.' : recipient ? 'Output is simulated for this recipient and will not enter your demo portfolio.' : 'Sample tokens arrive in your portfolio after the countdown.'} No real assets will move.</p>
     <p class="form-note" id="trade-submit-status" role="status"></p>
     <button class="primary full" id="confirm">Simulate ${action}</button>`);
   const button = $('#confirm');
@@ -645,7 +823,7 @@ function reviewTrade() {
       return;
     }
     const now = Date.now();
-    const receipt = {endsAt:now+demoActivityDuration[type], sourceAt:bridge?now+5000:null, source, destination, to, received, settled:false};
+    const receipt = {endsAt:now+demoActivityDuration[type], sourceAt:bridge?now+5000:null, source, destination, from, amount, to, received, minimumReceived, slippagePercent, feePercent, recipient, settled:false};
     if (!bridge) state.balances[from] -= amount;
     let index;
     try {

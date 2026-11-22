@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
@@ -16,6 +17,7 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
   const listeners = {};
   const chartPanel = { open: true, dataset: {}, isConnected: true };
   const embeds = [];
+  const copied = [];
   const navigatingBridge = hash === '#bridge' || hash === '#swap/bridge';
 
   function element(selector) {
@@ -57,6 +59,11 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
     documentElement: { dataset: {}, classList: {} },
     querySelector: element,
     querySelectorAll(selector) {
+      if (selector === '[data-slippage-percent]') return [0.1, 0.5, 1].map(percent => {
+        const button = element(`slippage-${percent}`);
+        button.dataset.slippagePercent = String(percent);
+        return button;
+      });
       const chart = element('#swap-chart-content');
       const markup = chart.innerHTML ?? '';
       const market = markup.match(/data-tv="([^"]+)"/);
@@ -93,6 +100,8 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
       static now() { return now; }
     },
     Event,
+    crypto: webcrypto,
+    navigator: {clipboard: {async writeText(value) { copied.push(value); }}},
     setTimeout(callback, delay) { timers.set(++timerId, { callback, due: now + delay }); return timerId; },
     clearTimeout(id) { timers.delete(id); }
   };
@@ -108,7 +117,7 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
     document.hidden = value;
     listeners.visibilitychange?.forEach(handler => handler());
   };
-  return { element, storage, embeds, location, balances, advance, setHidden,
+  return { element, storage, embeds, location, balances, advance, setHidden, copied,
     now: () => now, openStake: () => sandbox.stakeModal('ZRO'), showActivity: index => sandbox.openActivityDetails(index) };
 }
 
@@ -273,4 +282,75 @@ test('previous swaps and transfers show token marks without stored symbol metada
   const html = openSwap('#activity', {}, activity).element('#main').innerHTML;
   assert.match(html, /activity-asset-icons activity-asset-pair[^>]*><img data-token="ZRO" alt=""><img data-token="USDT0"/);
   assert.match(html, /activity-asset-icons [^>]*><img data-token="ZRO"[^>]*><\/span>/);
+});
+
+
+test('slippage presets and custom values set the reviewed minimum received', () => {
+  const { element, storage } = openSwap();
+  assert.equal(element('slippage-0.5').attributes['aria-pressed'], 'true');
+  element('slippage-1').onclick();
+  assert.equal(element('#trade-slippage').value, '1');
+  assert.equal(element('slippage-1').attributes['aria-pressed'], 'true');
+  const input=element('#trade-slippage');
+  input.value='6';
+  input.dispatchEvent(new Event('input'));
+  assert.equal(element('#review-trade').disabled, true);
+  input.value='2.25';
+  input.dispatchEvent(new Event('input'));
+  assert.equal(element('#review-trade').disabled, false);
+  const minimum=element('#minimum-received').textContent;
+  assert.match(minimum, /^2\.436[0-9]+ USDT0$/);
+  element('#review-trade').onclick();
+  assert.ok(element('#modal-content').innerHTML.includes(minimum));
+  assert.match(element('#modal-content').innerHTML, /<b>2\.25%<\/b>/);
+  element('#confirm').onclick();
+  const {receipt}=JSON.parse(storage.get('canopy-zero-state')).activity[0];
+  assert.equal(receipt.slippagePercent, 2.25);
+  assert.equal(`${receipt.minimumReceived} USDT0`, minimum);
+  assert.equal(receipt.recipient, null);
+});
+
+test('Swap and Bridge require a valid custom recipient and record the reviewed address', () => {
+  const recipient=`0x${'a'.repeat(40)}`;
+  for (const hash of ['#swap', '#swap/bridge']) {
+    const { element, storage, balances, advance } = openSwap(hash);
+    const picker=element('#trade-recipient-mode');
+    const input=element('#trade-recipient');
+    assert.equal(element('#trade-recipient-address').hidden, true);
+    picker.value='external';
+    picker.onchange();
+    assert.equal(element('#trade-recipient-address').hidden, false);
+    assert.equal(element('#review-trade').disabled, true);
+    input.value=`0x${'0'.repeat(40)}`;
+    input.dispatchEvent(new Event('input'));
+    assert.equal(element('#review-trade').disabled, true);
+    input.value=recipient+'00';
+    input.dispatchEvent(new Event('input'));
+    assert.equal(element('#review-trade').disabled, true);
+    input.value=recipient;
+    input.dispatchEvent(new Event('input'));
+    assert.equal(element('#review-trade').disabled, false);
+    element('#review-trade').onclick();
+    assert.ok(element('#modal-content').innerHTML.includes(recipient));
+    element('#confirm').onclick();
+    advance(21000);
+    const stored=JSON.parse(storage.get('canopy-zero-state'));
+    assert.equal(stored.activity[0].receipt.recipient, recipient);
+    assert.equal(stored.activity[0].receipt.settled, true);
+    assert.equal(stored.balances.ZRO, balances.ZRO - (hash === '#swap' ? 1 : 0));
+    assert.equal(stored.balances.USDT0, balances.USDT0);
+  }
+});
+
+test('demo hashes stay stable across reloads and copy the full reference', async () => {
+  const original = openSwap('#activity', {}, [{type:'Swap',detail:'1 ZRO to 2 USDT0',time:'10:00 AM'}]);
+  original.showActivity(0);
+  const saved = JSON.parse(original.storage.get('canopy-zero-state')).activity[0].demoHash;
+  assert.match(saved, /^0x[0-9a-f]{64}$/);
+  const reopened = openSwap('#activity', {}, [], {storage:original.storage});
+  reopened.showActivity(0);
+  assert.match(reopened.element('#modal-content').innerHTML, /Demo transaction hash/);
+  assert.ok(reopened.element('#modal-content').innerHTML.includes(saved));
+  await reopened.element('#copy-demo-hash').onclick();
+  assert.deepEqual(reopened.copied, [saved]);
 });

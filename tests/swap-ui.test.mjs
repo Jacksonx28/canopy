@@ -35,6 +35,7 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
         querySelector: element,
         classList: { add() {}, remove() {} },
         before() {},
+        focus() {},
         showModal() { this.open = true; },
         close() { this.open = false; },
         contains() { return true; }
@@ -120,7 +121,11 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
     document.hidden = value;
     listeners.visibilitychange?.forEach(handler => handler());
   };
-  return { element, storage, embeds, location, balances, advance, setHidden, copied,
+  const clickControl = dataset => {
+    const control = {dataset,isConnected:true};
+    for(const listener of listeners.click??[])listener({target:{closest:()=>control}});
+  };
+  return { element, storage, embeds, location, balances, advance, setHidden, copied, clickControl,
     now: () => now, openStake: () => sandbox.stakeModal('ZRO'), openClaim: () => sandbox.claimDemoRewards(),
     showActivity: index => sandbox.openActivityDetails(index) };
 }
@@ -236,8 +241,9 @@ test('the Zero portfolio omits cash controls and discovery cards, while Markets 
   assert.doesNotMatch(portfolio, /On your radar|Market charts|Add funds|Buying power|>Cash</);
   const markets = openSwap('#markets').element('#main').innerHTML;
   assert.match(markets, /On your radar/);
-  assert.match(markets, /data-mini="stocks"/);
-  assert.match(markets, /data-mini="memes"/);
+  assert.match(markets, /data-market-category="stocks"/);
+  assert.match(markets, /data-market-category="memes"/);
+  assert.match(markets, /data-market-category="indices"/);
 });
 
 test('Swap and Bridge shortcuts fill the pay amount and recalculate the quote', () => {
@@ -403,4 +409,32 @@ test('Rewards retains an unsaved claim for retry and credits the claim only once
   assert.equal(saved.activity.length, 1);
   assert.equal(saved.activity[0].type, 'Claim');
   assert.equal(element('#modal').open, false);
+});
+
+test('the market index filters benchmarks and keeps the saved list in sync', () => {
+  const {element,clickControl}=openSwap('#markets');
+  clickControl({marketCategory:'indices'});
+  assert.equal(element('#market-index-count').textContent,'4 markets');
+  assert.match(element('#market-index-results').innerHTML,/data-market-row="BTC\.D"/);
+  element('#search').value='bitcoin';
+  element('#search').oninput();
+  assert.equal(element('#market-index-count').textContent,'1 market');
+  clickControl({pin:'BTC.D'});
+  assert.match(element('#market-overview-watchlist').innerHTML,/BTC\.D/);
+  clickControl({marketWatchlist:''});
+  assert.equal(element('#market-index-count').textContent,'1 market');
+  clickControl({pin:'BTC.D'});
+  assert.match(element('#market-index-results').innerHTML,/No markets match/);
+});
+
+test('market sorting puts quoted movers first and pagination shows more rows', () => {
+  const {element,clickControl}=openSwap('#markets');
+  element('#market-sort').value='gainers';
+  element('#market-sort').onchange();
+  let html=element('#market-index-results').innerHTML;
+  assert.equal(/<tr data-market-row="([^"]+)"/.exec(html)[1],'PEPE');
+  assert.equal([...html.matchAll(/<tr data-market-row=/g)].length,12);
+  clickControl({marketMore:''});
+  html=element('#market-index-results').innerHTML;
+  assert.equal([...html.matchAll(/<tr data-market-row=/g)].length,24);
 });

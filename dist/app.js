@@ -8,6 +8,13 @@ const zeroDemoAssets = [
   {name:'Wrapped eETH',symbol:'weETH',price:3250,change:null,balance:0.2,type:'crypto',demoLabel:'Ecosystem example'},
 ];
 assets.unshift(...zeroDemoAssets);
+const marketBenchmarks = [
+  {name:'S&P 500',symbol:'SPX',market:'SP:SPX',context:'US large caps',mark:'<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8M12 8v8"/>'},
+  {name:'Nasdaq 100',symbol:'NDX',market:'NASDAQ:NDX',context:'Nasdaq leaders',mark:'<path d="m4 16 5-5 4 3 7-7M15 7h5v5"/>'},
+  {name:'Crypto market cap',symbol:'TOTAL',market:'CRYPTOCAP:TOTAL',context:'Total market value',mark:'<path d="M5 18v-5m7 5V6m7 12V9"/>'},
+  {name:'Bitcoin dominance',symbol:'BTC.D',market:'CRYPTOCAP:BTC.D',context:'Bitcoin market share',mark:'<circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 5"/>'},
+].map(benchmark=>({...benchmark,type:'indices',price:null,change:null,balance:0}));
+assets.push(...marketBenchmarks);
 const demoSwapTokens = zeroDemoAssets.map(asset=>asset.symbol);
 const portfolioRanges = ['1D','1W','1M','3M','1Y','ALL'];
 const demoStateKey='canopy-zero-state';
@@ -21,7 +28,7 @@ const state={
   rewards:nonnegative(stored?.version===2 ? stored.rewards : null,12),
   activity:Array.isArray(stored?.activity)?stored.activity:[],
 };
-let page='portfolio',range='1W',market='stocks',holdTab='assets',miniTab='watchlist';
+let page='portfolio',range='1W',holdTab='assets';
 const persist=()=>localStorage.setItem(demoStateKey,JSON.stringify(state));
 const icons={portfolio:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',markets:'<path d="M4 19V12m8 7V5m8 14V9"/>',swap:'<path d="M4 7h16l-4-4M20 17H4l4 4"/>',stake:'<path d="M12 3v18M3 12h18M5.5 5.5l13 13m0-13-13 13"/>',activity:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>'};
 icons.perps='<path d="M3 17l5-5 4 3 8-9M15 6h5v5"/>';
@@ -48,7 +55,6 @@ const watchlistKey='canopy-zero-watchlist';
 let watchlist;
 try { watchlist=JSON.parse(localStorage.getItem(watchlistKey)); } catch {}
 watchlist=Array.isArray(watchlist) ? [...new Set(watchlist)].filter(symbol=>assets.some(asset=>asset.symbol===symbol)) : ['ZRO','USDT0','weETH'];
-let selectedSymbol='NVDA';
 const pinnedAssets=()=>watchlist.map(symbol=>assets.find(asset=>asset.symbol===symbol));
 const starPath='<path d="M11.16 4.2a.93.93 0 0 1 1.68 0l2.06 4.17 4.6.67a.93.93 0 0 1 .52 1.59l-3.33 3.25.79 4.59a.93.93 0 0 1-1.36.98L12 17.28l-4.12 2.17a.93.93 0 0 1-1.36-.98l.79-4.59-3.33-3.25A.93.93 0 0 1 4.5 9.04l4.6-.67 2.06-4.17Z"/>';
 function pinContents(pinned, labelled){
@@ -60,6 +66,7 @@ function watchToggle(asset,labelled=false){
 }
 const tvSymbols={ZRO:'COINBASE:ZROUSD',BTC:'COINBASE:BTCUSD',ETH:'COINBASE:ETHUSD',SOL:'COINBASE:SOLUSD',USDC:'COINBASE:USDCUSD',NVDA:'NASDAQ:NVDA',TSLA:'NASDAQ:TSLA',AAPL:'NASDAQ:AAPL',DOGE:'BINANCE:DOGEUSDT',PEPE:'BINANCE:PEPEUSDT',WIF:'BINANCE:WIFUSDT',BONK:'BINANCE:BONKUSDT'};
 Object.assign(tvSymbols,{"XRP": "BINANCE:XRPUSDT", "ADA": "BINANCE:ADAUSDT", "AVAX": "BINANCE:AVAXUSDT", "LINK": "BINANCE:LINKUSDT", "DOT": "BINANCE:DOTUSDT", "LTC": "BINANCE:LTCUSDT", "BCH": "BINANCE:BCHUSDT", "UNI": "BINANCE:UNIUSDT", "AAVE": "BINANCE:AAVEUSDT", "NEAR": "BINANCE:NEARUSDT", "SUI": "BINANCE:SUIUSDT", "ARB": "BINANCE:ARBUSDT", "OP": "BINANCE:OPUSDT", "MSFT": "NASDAQ:MSFT", "AMZN": "NASDAQ:AMZN", "GOOGL": "NASDAQ:GOOGL", "META": "NASDAQ:META", "NFLX": "NASDAQ:NFLX", "AMD": "NASDAQ:AMD", "INTC": "NASDAQ:INTC", "COIN": "NASDAQ:COIN", "PLTR": "NASDAQ:PLTR", "MSTR": "NASDAQ:MSTR", "JPM": "NYSE:JPM", "V": "NYSE:V", "DIS": "NYSE:DIS", "WMT": "NASDAQ:WMT", "UBER": "NYSE:UBER", "SPY": "AMEX:SPY"});
+for(const benchmark of marketBenchmarks)tvSymbols[benchmark.symbol]=benchmark.market;
 function liveChart(symbol, id, market = tvSymbols[symbol]) {
   if (!market) {
     return `<div class="chart-unavailable" role="status"><strong>Chart unavailable</strong><p>No exchange chart is available for ${symbol}.</p></div>`;
@@ -140,29 +147,6 @@ function portfolio(){
   </section>`;
 }
 
-const radarTabs=[['watchlist','Watchlist'],['stocks','Stocks'],['memes','Memes']];
-function radarContent(){
-  if(miniTab==='watchlist'){
-    const saved=pinnedAssets();
-    if(!saved.length)return `<div class="radar-empty">${CanopyUI.graphic(starPath,'watchlist-star')}<p>Star an asset in Markets to save it here.</p></div>`;
-    return `<div class="radar-watchlist">${saved.map(asset=>`<article class="radar-watch-card"><button class="radar-watch-asset" data-asset="${asset.symbol}">${assetName(asset)}</button>${watchToggle(asset)}</article>`).join('')}</div>`;
-  }
-  const items=assets.filter(asset=>asset.type===miniTab).slice(0,4);
-  return `<div class="discovery-grid">${items.map((asset,index)=>`<button class="discovery-tile tile-${index}" data-asset="${asset.symbol}"><div class="token-art">${coin(asset)}</div><div class="tile-info"><strong>${asset.name}</strong>${chg(asset)}</div><div class="tile-meta">${asset.symbol}<span>Open market chart</span></div></button>`).join('')}</div>`;
-}
-function marketRadar(){
-  return `<section class="discovery market-radar" aria-labelledby="radar-title"><div class="card-top"><h2 id="radar-title">On your radar</h2><div class="section-tabs" role="group" aria-label="Radar view">${radarTabs.map(([type,label])=>`<button class="${miniTab===type?'active':''}" data-mini="${type}" aria-pressed="${miniTab===type}" aria-controls="radar-content">${label}</button>`).join('')}</div></div><div id="radar-content">${radarContent()}</div></section>`;
-}
-function refreshRadar(){
-  const content=$('#radar-content');
-  if(!content)return;
-  for(const tab of document.querySelectorAll('.market-radar [data-mini]')){
-    const active=tab.dataset.mini===miniTab;
-    tab.classList.toggle('active',active);
-    tab.setAttribute('aria-pressed',String(active));
-  }
-  content.innerHTML=radarContent();
-}
 let tradeMode = 'swap';
 const bridgeTokens = ['ZRO'];
 const bridgeNetworks = ['Ethereum', 'Zero (demo)'];
@@ -406,18 +390,161 @@ function bridgeNetworkIcon(network) {
   if (network === 'Zero (demo)') return CanopyUI.token('ZRO');
   return CanopyUI.network(network);
 }
-function markets(){return heading('Markets','Price action, watchlists, and what’s moving.',`<span class="tag">Charts powered by TradingView</span>`)+marketRadar()+`<div class="market-controls"><div class="segments">${[['stocks','Stocks'],['crypto','Crypto'],['memes','Trending memes']].map(([v,n])=>`<button class="${market===v?'active':''}" data-market="${v}">${n}</button>`).join('')}</div><input class="search" id="search" aria-label="Search markets" placeholder="Search name or symbol"></div><section class="market-terminal"><div class="market-sidebar"><div class="card-top"><h2>${market==='memes'?'Meme watch':market==='stocks'?'Stock watch':'Crypto watch'}</h2><span class="data-caption">Sample list</span></div><div id="market-rows">${marketRows('')}</div></div><div class="market-chart-panel"><div class="card-top"><h2 id="selected-market">${marketChartTitle(selectedSymbol)}</h2><span class="data-caption">Exchange data · May be delayed</span></div><div id="market-live">${liveChart(selectedSymbol,'markets-chart')}</div></div></section><div class="market-bottom"><span>Star any asset to save it to On your radar.</span><span>Quotes in this list are samples. Open a chart for exchange data.</span></div>`}
-function marketChartTitle(symbol){
-  const asset=assets.find(item=>item.symbol===symbol);
-  const quote=tvSymbols[symbol]?.endsWith('USDT')?'USDT':'USD';
-  return coin(asset)+(tvSymbols[symbol]&&asset.type!=='stocks'?`${symbol} / ${quote}`:symbol);
+function marketOverviewWatchlist(){
+  const saved=pinnedAssets();
+  if(!saved.length)return '<p class="market-overview-empty">Star a market to save it here.</p>';
+  const rows=saved.slice(0,4).map(asset=>`<div class="market-overview-watch-row"><button type="button" class="market-overview-asset" data-select-market="${asset.symbol}">${coin(asset)}<span><strong>${asset.symbol}</strong><small>${asset.name}</small></span></button>${watchToggle(asset)}</div>`);
+  return `<div class="market-overview-watch-rows">${rows.join('')}</div>${saved.length>4?`<button type="button" class="quiet market-overview-more" data-market-view="watchlist">View all ${saved.length}</button>`:''}`;
 }
-function marketRows(query){
-  const search=query.trim().toLowerCase();
-  const rows=assets.filter(asset=>asset.type===market&&`${asset.name} ${asset.symbol}`.toLowerCase().includes(search));
-  if(!rows.length)return '<div class="empty">No matching assets.</div>';
-  return rows.map(asset=>`<div class="market-row ${selectedSymbol===asset.symbol?'selected':''}">${watchToggle(asset)}<button class="market-select" data-select-market="${asset.symbol}">${assetName(asset)}<span>${asset.demoLabel||money(asset.price,asset.price<.01?7:2)}<small>${asset.demoLabel?(tvSymbols[asset.symbol]?'Exchange chart':'No chart data'):chg(asset)}</small></span></button></div>`).join('');
+
+function marketMovers(){
+  const withMoves=assets.filter(asset=>Number.isFinite(asset.change));
+  const gainers=withMoves.filter(asset=>asset.change>0).sort((a,b)=>b.change-a.change);
+  const decliners=withMoves.filter(asset=>asset.change<0).sort((a,b)=>a.change-b.change);
+  function group(title,items){
+    return `<div class="market-mover-group"><h3>${title}</h3>${items.slice(0,2).map(asset=>`<button type="button" class="market-overview-asset market-mover-row" data-select-market="${asset.symbol}">${coin(asset)}<strong>${asset.symbol}</strong>${chg(asset)}</button>`).join('')||'<p class="market-overview-empty">No sample moves.</p>'}</div>`;
+  }
+  return `<div class="market-mover-groups">${group('Gainers',gainers)}${group('Decliners',decliners)}</div>`;
 }
+
+function marketOverview(){
+  return `<div class="market-overview">
+    <section class="market-benchmarks" aria-labelledby="market-benchmark-title">
+      <div class="market-overview-head"><h2 id="market-benchmark-title">Benchmarks</h2><button type="button" class="quiet market-overview-more" data-market-view="indices">View indices</button></div>
+      <div class="market-benchmark-rail">${marketBenchmarks.map(benchmark=>`<button type="button" class="card market-benchmark" data-select-market="${benchmark.symbol}" aria-label="Open ${benchmark.name} chart"><span class="market-benchmark-top"><span class="market-benchmark-mark">${CanopyUI.graphic(benchmark.mark)}</span><span class="market-benchmark-symbol">${benchmark.symbol}</span></span><strong>${benchmark.name}</strong><small>${benchmark.context}</small></button>`).join('')}</div>
+    </section>
+    <div class="market-overview-panels">
+      <section class="card market-overview-card" aria-labelledby="market-movers-title"><div class="market-overview-head"><h2 id="market-movers-title">Top movers</h2><span class="data-caption">Sample changes</span></div>${marketMovers()}</section>
+      <section class="card market-overview-card" aria-labelledby="market-overview-radar-title"><div class="market-overview-head"><h2 id="market-overview-radar-title">On your radar</h2><span class="data-caption">Watchlist</span></div><div id="market-overview-watchlist">${marketOverviewWatchlist()}</div></section>
+    </div>
+  </div>`;
+}
+
+const marketCategories=[['all','All'],['crypto','Crypto'],['stocks','Stocks'],['indices','Indices'],['memes','Memes']];
+const marketSortOptions=[['featured','Featured'],['gainers','Top gainers'],['losers','Top losers'],['price','Highest price'],['name','Name A–Z']];
+const marketPageSize=12;
+let pendingMarketView='';
+const marketDirectory={category:'all',watchlist:false,sort:'featured',query:'',limit:marketPageSize};
+const marketSearchIcon='<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>';
+const marketArrowIcon='<path d="m10 7 5 5-5 5"/>';
+
+function marketCategory(asset){
+  if(asset.type==='indices'||asset.type==='index')return 'indices';
+  return asset.type;
+}
+
+function marketMatches(){
+  const search=marketDirectory.query.trim().toLowerCase();
+  const result=assets.filter(asset=>
+    (marketDirectory.category==='all'||marketCategory(asset)===marketDirectory.category)&&
+    (!marketDirectory.watchlist||watchlist.includes(asset.symbol))&&
+    (!search||`${asset.symbol} ${asset.name}`.toLowerCase().includes(search))
+  );
+  const {sort}=marketDirectory;
+  if(sort==='name')return result.sort((left,right)=>left.name.localeCompare(right.name));
+  if(sort==='featured')return result;
+  const metric=sort==='price'?'price':'change';
+  return result.sort((left,right)=>{
+    const a=left[metric],b=right[metric];
+    if(!Number.isFinite(a))return Number.isFinite(b)?1:0;
+    if(!Number.isFinite(b))return -1;
+    return sort==='losers'?a-b:b-a;
+  });
+}
+
+function marketIndexRows(visible){
+  return visible.map(asset=>{
+    const category=marketCategories.find(([key])=>key===marketCategory(asset))?.[1]||'Market';
+    const price=Number.isFinite(asset.price)?money(asset.price,asset.price<.01?7:2):'—';
+    const change=Number.isFinite(asset.change)?chg(asset):'<span class="muted market-index-empty-value" aria-label="No sample change">—</span>';
+    const action=tvSymbols[asset.symbol]?'Open chart':'View details';
+    return `<tr data-market-row="${asset.symbol}">
+      <td class="market-index-pin">${watchToggle(asset)}</td>
+      <th scope="row"><button type="button" class="market-index-asset" data-select-market="${asset.symbol}" aria-label="${action}: ${asset.name}">${assetName(asset)}</button></th>
+      <td class="market-index-kind"><span>${category}</span></td>
+      <td class="market-index-price"><span>${price}</span><span class="market-index-mobile-change">${change}</span></td>
+      <td class="market-index-change">${change}</td>
+      <td class="market-index-open" aria-hidden="true">${CanopyUI.graphic(marketArrowIcon)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function marketIndexResults(results){
+  if(!results.length){
+    const savedEmpty=marketDirectory.watchlist&&!watchlist.length;
+    return `<div class="market-index-empty">${CanopyUI.graphic(savedEmpty?starPath:marketSearchIcon)}<strong>${savedEmpty?'Your watchlist is empty':'No markets match these filters'}</strong><p>${savedEmpty?'Star an asset in the market index to save it here.':'Try another search or clear the filters.'}</p><button class="secondary" type="button" data-market-clear>${savedEmpty?'Browse markets':'Clear filters'}</button></div>`;
+  }
+  const visible=results.slice(0,marketDirectory.limit);
+  return `<table class="market-index-table" aria-labelledby="market-index-title">
+    <colgroup><col class="mi-col-pin"><col><col class="mi-col-kind"><col class="mi-col-price"><col class="mi-col-change"><col class="mi-col-open"></colgroup>
+    <thead><tr><th scope="col"><span class="market-sr-only">Watchlist</span></th><th scope="col">Asset</th><th scope="col" class="market-index-kind">Category</th><th scope="col" class="market-index-price">Sample price<span class="market-index-mobile-change"> / 24h</span></th><th scope="col" class="market-index-change">24h sample</th><th scope="col" class="market-index-open"><span class="market-sr-only">Details</span></th></tr></thead>
+    <tbody>${marketIndexRows(visible)}</tbody>
+  </table>
+  <div class="market-index-footer"><span>Showing ${visible.length} of ${results.length}</span>${results.length>visible.length?'<button class="secondary" type="button" data-market-more>Show more</button>':''}</div>`;
+}
+
+function markets(){
+  const results=marketMatches();
+  return `<div class="markets-workspace">
+    <div class="market-page-heading"><div><h1>Markets</h1><p>Benchmarks, movers and your watchlist in one view.</p></div><span class="market-chart-source">${CanopyUI.graphic('<path d="M3 17l5-5 4 3 8-9"/>')} Charts by TradingView</span></div>
+    ${marketOverview()}
+    <section class="card market-directory" id="market-directory" aria-labelledby="market-index-title">
+      <div class="market-directory-heading"><div><h2 id="market-index-title">Market index</h2><span id="market-index-count" role="status">${results.length} ${results.length===1?'market':'markets'}</span></div><button class="market-watch-filter" type="button" id="market-watch-filter" data-market-watchlist aria-pressed="${marketDirectory.watchlist}">${CanopyUI.graphic(starPath,'watchlist-star')}<span>Watchlist</span></button></div>
+      <div class="market-directory-toolbar">
+        <div class="market-category-buttons" role="group" aria-label="Market category">${marketCategories.map(([key,label])=>`<button type="button" data-market-category="${key}" aria-pressed="${marketDirectory.category===key}">${label}</button>`).join('')}</div>
+        <div class="market-directory-fields"><label class="market-search-label" for="search">${CanopyUI.graphic(marketSearchIcon)}<span class="market-sr-only">Search markets</span><input type="search" id="search" placeholder="Search markets" autocomplete="off"></label><label class="market-sort-label" for="market-sort"><span class="market-sr-only">Sort markets</span><select id="market-sort">${marketSortOptions.map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label></div>
+      </div>
+      <div id="market-index-results">${marketIndexResults(results)}</div>
+    </section>
+  </div>`;
+}
+
+function refreshMarketIndex(){
+  const index=$('#market-index-results');
+  if(!index || page!=='markets')return;
+  const results=marketMatches();
+  index.innerHTML=marketIndexResults(results);
+  $('#market-index-count').textContent=`${results.length} ${results.length===1?'market':'markets'}`;
+  for(const button of document.querySelectorAll('[data-market-category]'))button.setAttribute('aria-pressed',String(button.dataset.marketCategory===marketDirectory.category));
+  $('#market-watch-filter').setAttribute('aria-pressed',String(marketDirectory.watchlist));
+}
+
+function showMarketView(view){
+  marketDirectory.watchlist=view==='watchlist';
+  marketDirectory.category=view==='indices'?'indices':'all';
+  marketDirectory.query='';
+  marketDirectory.limit=marketPageSize;
+  if(page!=='markets'){
+    if(view==='watchlist')pendingMarketView=view;
+    return;
+  }
+  $('#search').value='';
+  refreshMarketIndex();
+  focusMarketIndex(view);
+}
+
+function focusMarketIndex(view){
+  $('#market-directory').scrollIntoView({block:'start'});
+  const control=view==='indices'?'[data-market-category="indices"]':view==='watchlist'?'#market-watch-filter':'#search';
+  $(control)?.focus({preventScroll:true});
+}
+
+function mountMarketDirectory(){
+  const search=$('#search'),sort=$('#market-sort');
+  search.value=marketDirectory.query;
+  sort.value=marketDirectory.sort;
+  search.oninput=()=>{
+    marketDirectory.query=search.value;
+    marketDirectory.limit=marketPageSize;
+    refreshMarketIndex();
+  };
+  sort.onchange=()=>{
+    marketDirectory.sort=sort.value;
+    marketDirectory.limit=marketPageSize;
+    refreshMarketIndex();
+  };
+}
+
 function stake(){
   const zro=zeroDemoAssets[0];
   return heading('Stake','Try delegating sample ZRO in Demo Mode.')+`
@@ -724,7 +851,7 @@ function render(preserveRange=false){
   const views={portfolio,markets,swap:demoTrade,stake,perps:comingSoon,rewards,activity};
   $('#main').innerHTML=views[page]();
   if(page==='swap') mountDemoTrade();
-  if(page==='markets') $('#search').oninput=e=>$('#market-rows').innerHTML=marketRows(e.target.value);
+  if(page==='markets') mountMarketDirectory();
   hydrateCharts();
   if(!preserveRange)CanopyUI.enter($('#main'));
   scheduleActivityTick();
@@ -961,9 +1088,8 @@ document.addEventListener('click',event=>{
     });
     $('#portfolio-chart').innerHTML=chart(portfolioRanges.indexOf(range));
   }
-  if(action.market){market=action.market;selectedSymbol=assets.find(asset=>asset.type===market).symbol;render();}
   if(action.hold){holdTab=action.hold;render();}
-  if(action.mini){miniTab=action.mini;refreshRadar();}
+  if(action.mini==='watchlist')showMarketView('watchlist');
   if(action.asset)assetDetail(action.asset);
   if(action.stake)stakeModal(action.stake);
   if(action.action==='claim')claimDemoRewards();
@@ -988,6 +1114,7 @@ $('#mobile-theme').onclick=()=>$('#appearance').click();
 $('#appearance').onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 function openMarketSearch(){
   if(page!=='markets'){
+    showMarketView('all');
     history.pushState(null,'','#markets');
     render();
   }
@@ -1002,41 +1129,48 @@ document.addEventListener('keydown',event=>{
   openMarketSearch();
 });
 document.addEventListener('click',event=>{
-  const button=event.target.closest('button');
+  const button=event.target.closest('button,[data-market-row]');
   if(!button)return;
-  const {pin,selectMarket}=button.dataset;
+  const {pin,selectMarket,marketRow,marketCategory:category,marketView:view,marketWatchlist,marketMore,marketClear}=button.dataset;
   if(pin){
     const asset=assets.find(item=>item.symbol===pin);
     if(!asset)return;
     const pinned=!watchlist.includes(pin);
     watchlist=pinned?[...watchlist,pin]:watchlist.filter(symbol=>symbol!==pin);
     try { localStorage.setItem(watchlistKey,JSON.stringify(watchlist)); } catch {}
-    const fromRadar=Boolean(button.closest('.radar-watchlist'));
-    if(page==='markets'&&miniTab==='watchlist')refreshRadar();
+    const radar=$('#market-overview-watchlist');
+    if(radar)radar.innerHTML=marketOverviewWatchlist();
+    if(page==='markets'&&marketDirectory.watchlist)refreshMarketIndex();
     for(const toggle of document.querySelectorAll(`[data-pin="${pin}"]`)){
       toggle.setAttribute('aria-pressed',String(pinned));
       toggle.title=`${pinned?'Remove from':'Add to'} watchlist`;
       toggle.innerHTML=pinContents(pinned,toggle.classList.contains('watch-action'));
     }
-    if(fromRadar) $('.market-radar [data-mini="watchlist"]')?.focus({preventScroll:true});
+    if(page==='markets'&&!button.isConnected)$('#market-watch-filter')?.focus({preventScroll:true});
     toast(`${asset.symbol} ${pinned?'added to':'removed from'} Watchlist`);
+    return;
   }
-  if(selectMarket){
-    selectedSymbol=selectMarket;
-    $('#selected-market').innerHTML=marketChartTitle(selectedSymbol);
-    $('#market-live').innerHTML=liveChart(selectedSymbol,'markets-chart');
-    $('.market-row.selected')?.classList.remove('selected');
-    button.closest('.market-row')?.classList.add('selected');
-    hydrateCharts();
-    if(matchMedia('(max-width: 980px)').matches){
-      const chart=$('.market-chart-panel');
-      chart.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
-    }
+  if(page!=='markets')return;
+  if(selectMarket||marketRow){assetDetail(selectMarket||marketRow);return;}
+  if(view){showMarketView(view);return;}
+  if(category){marketDirectory.category=category;marketDirectory.limit=marketPageSize;refreshMarketIndex();}
+  if(marketWatchlist!==undefined){marketDirectory.watchlist=!marketDirectory.watchlist;marketDirectory.limit=marketPageSize;refreshMarketIndex();}
+  if(marketClear!==undefined)showMarketView('all');
+  if(marketMore!==undefined){
+    const firstNew=marketMatches()[marketDirectory.limit];
+    marketDirectory.limit+=marketPageSize;
+    refreshMarketIndex();
+    if(firstNew)$(`[data-market-row="${firstNew.symbol}"] [data-select-market]`)?.focus({preventScroll:true});
   }
 });
 setTheme(document.documentElement.dataset.theme||'light');
 window.addEventListener('hashchange',()=>{
   if(appDialog.open)appDialog.close();
   render();window.scrollTo(0,0);$('.shell').scrollTo(0,0);
+  if(page==='markets'&&pendingMarketView){
+    const view=pendingMarketView;
+    pendingMarketView='';
+    focusMarketIndex(view);
+  }
 });
 render();

@@ -68,9 +68,11 @@ function liveChart(symbol, id, market = tvSymbols[symbol]) {
     <div class="chart-source"><a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(market)}" target="_blank" rel="noopener">Open on TradingView</a><span>Exchange data · Separate from demo quotes</span></div>`;
 }
 
+const mobileSwapLayout=window.matchMedia?.('(max-width: 720px)');
+
 function hydrateCharts() {
   document.querySelectorAll('[data-tv]:not([data-loaded])').forEach(el => {
-    if (el.closest('details:not([open])')) return;
+    if (el.closest('details:not([open])') || (mobileSwapLayout?.matches && el.closest('#swap-chart-panel'))) return;
     el.dataset.loaded = 'true';
     const frame = document.createElement('iframe');
     frame.className = 'isolated-chart';
@@ -96,6 +98,14 @@ function hydrateCharts() {
     el.append(frame);
   });
 }
+mobileSwapLayout?.addEventListener?.('change', event=>{
+  if(!event.matches){hydrateCharts();return;}
+  $('#swap-chart-panel')?.querySelectorAll('[data-tv][data-loaded]').forEach(chart=>{
+    chart.replaceChildren();
+    delete chart.dataset.loaded;
+  });
+});
+
 function portfolio(){
   const held=zeroDemoAssets.filter(asset=>state.balances[asset.symbol]>0);
   const total=held.reduce((sum,asset)=>sum+state.balances[asset.symbol]*asset.price,0)+(state.staked+state.rewards)*zeroDemoAssets[0].price;
@@ -165,27 +175,47 @@ const tradeDrafts = {
 const amountText = amount => amount.toLocaleString('en-US', {maximumFractionDigits: 7});
 const isWalletAddress = address => /^0x[0-9a-f]{40}$/i.test(address) && !/^0x0{40}$/i.test(address);
 
-function tradeSettings(bridge) {
-  return `<div class="trade-settings">
-    ${bridge ? '' : `<div class="trade-setting">
-      <div class="trade-setting-label"><label for="trade-slippage">Slippage tolerance</label><small>Allowed price movement</small></div>
+const tradeSettingsIcon = '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.08A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.08A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.08A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.08A1.65 1.65 0 0 0 19.4 15Z"/>';
+
+function tradeSlippageMenu() {
+  return `<details class="trade-slippage-menu" id="trade-slippage-menu">
+    <summary aria-label="Swap settings" title="Swap settings">${CanopyUI.graphic(tradeSettingsIcon)}</summary>
+    <div class="trade-slippage-panel">
+      <label for="trade-slippage">Slippage tolerance</label>
       <div class="slippage-controls">
         <div class="amount-shortcuts" role="group" aria-label="Slippage presets">${slippagePresets.map(percent => `<button type="button" data-slippage-percent="${percent}" aria-pressed="false">${percent}%</button>`).join('')}</div>
         <div class="slippage-input"><input id="trade-slippage" type="number" min="0.01" max="5" step="any" inputmode="decimal" aria-label="Slippage tolerance (%)" aria-describedby="trade-slippage-note"><span aria-hidden="true">%</span></div>
       </div>
-      <small class="trade-setting-note" id="trade-slippage-note">Choose 0.01% to 5%.</small>
-    </div>`}
-    <div class="trade-setting">
-      <div class="trade-setting-label"><label for="trade-recipient-mode">Recipient</label></div>
-      <select id="trade-recipient-mode" class="network-select"><option value="own">My demo wallet</option><option value="external">Another wallet</option></select>
-      <div class="trade-recipient-address" id="trade-recipient-address" hidden>
-        <label for="trade-recipient">Destination wallet address</label>
-        <input id="trade-recipient" class="modal-input" type="text" placeholder="0x…" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="96" aria-describedby="trade-recipient-note">
-        <small id="trade-recipient-note">EVM address for this simulated delivery.</small>
-      </div>
+      <small class="trade-setting-error" id="trade-slippage-note" hidden></small>
+    </div>
+  </details>`;
+}
+
+function tradeRecipient() {
+  return `<div class="trade-recipient">
+    <div class="trade-recipient-row">
+      <label for="trade-recipient-mode">Recipient</label>
+      <select id="trade-recipient-mode" class="trade-recipient-picker"><option value="own">My wallet</option><option value="external">Another wallet</option></select>
+    </div>
+    <div class="trade-recipient-address" id="trade-recipient-address" hidden>
+      <label for="trade-recipient">Destination wallet address</label>
+      <input id="trade-recipient" class="modal-input" type="text" placeholder="0x…" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="96" aria-describedby="trade-recipient-note">
+      <small class="trade-setting-error" id="trade-recipient-note" hidden></small>
     </div>
   </div>`;
 }
+
+document.addEventListener('click', event => {
+  const menu = $('#trade-slippage-menu');
+  if (menu?.open && !menu.contains(event.target)) menu.open = false;
+});
+document.addEventListener('keydown', event => {
+  const menu = $('#trade-slippage-menu');
+  if (event.key !== 'Escape' || !menu?.open || appDialog.open) return;
+  event.preventDefault();
+  menu.open = false;
+  menu.querySelector('summary').focus();
+});
 
 function tradeOptions(items, selected) {
   return items.map(item => `<option ${item === selected ? 'selected' : ''}>${item}</option>`).join('');
@@ -233,9 +263,12 @@ function demoTrade() {
   return heading('Swap', subtitle, '<span class="tag">Demo Mode</span>') + `
     <div class="page-grid">
       <section class="card trade-card">
-        <div class="trade-tabs" role="group" aria-label="Trade mode">
-          <a href="#swap" ${bridge ? '' : 'class="active" aria-current="page"'}>Swap</a>
-          <a href="#swap/bridge" ${bridge ? 'class="active" aria-current="page"' : ''}>Bridge</a>
+        <div class="trade-card-header">
+          <div class="trade-tabs" role="group" aria-label="Trade mode">
+            <a href="#swap" ${bridge ? '' : 'class="active" aria-current="page"'}>Swap</a>
+            <a href="#swap/bridge" ${bridge ? 'class="active" aria-current="page"' : ''}>Bridge</a>
+          </div>
+          ${bridge ? '' : tradeSlippageMenu()}
         </div>
         ${bridge ? `<div class="network-row">
           <label>From network<select class="network-select" id="from-network">${tradeOptions(bridgeNetworks, draft.source)}</select></label>
@@ -262,7 +295,7 @@ function demoTrade() {
           </div>
           <div class="field-bottom"><span id="receive-usd"></span><span>Includes demo fee</span></div>
         </div>
-        ${tradeSettings(bridge)}
+        ${tradeRecipient()}
         <div class="trade-details">
           <div><span>${bridge ? 'Demo arrival' : 'Sample exchange rate'}</span><b id="rate">${demoActivityDuration.Bridge/1000} seconds</b></div>
           ${bridge ? '' : '<div><span>Minimum received</span><b id="minimum-received">—</b></div>'}
@@ -270,7 +303,7 @@ function demoTrade() {
           <div><span>Network fee</span><b>Illustrative · $0.08</b></div>
         </div>
         <button class="primary full" id="review-trade">Review demo ${action}</button>
-        <p class="form-note">${bridge ? 'Simulated transfer. No ZRO moves.' : 'ZRO is Zero’s native token. Other tokens are ecosystem examples and their availability on Zero is unverified.'}</p>
+        ${bridge ? '<p class="form-note">Simulated transfer. No ZRO moves.</p>' : ''}
       </section>
       <section class="trade-context">
         ${bridge ? `<div class="card route-panel">
@@ -722,9 +755,14 @@ function updateQuote() {
   const validRecipient = recipient === null || isWalletAddress(recipient);
   $('#trade-recipient-address').hidden = recipient === null;
   addressInput.setAttribute('aria-invalid', String(!validRecipient));
-  $('#trade-recipient-note').textContent = validRecipient ? 'EVM address for this simulated delivery.' : 'Enter a nonzero EVM wallet address.';
+  const recipientNote = $('#trade-recipient-note');
+  recipientNote.hidden = validRecipient;
+  recipientNote.textContent = validRecipient ? '' : 'Enter a nonzero EVM wallet address.';
   if (slippageInput) {
     slippageInput.setAttribute('aria-invalid', String(!validSlippage));
+    const slippageNote = $('#trade-slippage-note');
+    slippageNote.hidden = validSlippage;
+    slippageNote.textContent = validSlippage ? '' : 'Enter a tolerance between 0.01% and 5%.';
     for (const preset of document.querySelectorAll('[data-slippage-percent]')) {
       preset.setAttribute('aria-pressed', String(validSlippage && Number(preset.dataset.slippagePercent) === slippagePercent));
     }
@@ -735,7 +773,7 @@ function updateQuote() {
     : bridge && draft.source === draft.destination ? 'Choose different networks'
     : !bridge && from === to ? 'Choose different assets'
     : !Number.isFinite(received) || received <= 0 ? 'Invalid quote amount'
-    : !validSlippage ? 'Enter valid slippage'
+    : !validSlippage ? 'Check slippage settings'
     : !bridge && minimumReceived <= 0 ? 'Amount too small after slippage'
     : !validRecipient ? 'Check the recipient address'
     : '';

@@ -291,7 +291,11 @@ test('previous swaps and transfers show token marks without stored symbol metada
 
 test('slippage presets and custom values set the reviewed minimum received', () => {
   const { element, storage } = openSwap();
+  const markup=element('#main').innerHTML;
+  assert.match(markup, /<details class="trade-slippage-menu" id="trade-slippage-menu">\s*<summary aria-label="Swap settings"/);
+  assert.doesNotMatch(markup, /Allowed price movement|Choose 0\.01% to 5%/);
   assert.equal(element('slippage-0.5').attributes['aria-pressed'], 'true');
+  assert.equal(element('#trade-slippage-note').hidden, true);
   element('slippage-1').onclick();
   assert.equal(element('#trade-slippage').value, '1');
   assert.equal(element('slippage-1').attributes['aria-pressed'], 'true');
@@ -299,9 +303,12 @@ test('slippage presets and custom values set the reviewed minimum received', () 
   input.value='6';
   input.dispatchEvent(new Event('input'));
   assert.equal(element('#review-trade').disabled, true);
+  assert.equal(element('#review-trade').textContent, 'Check slippage settings');
+  assert.equal(element('#trade-slippage-note').hidden, false);
   input.value='2.25';
   input.dispatchEvent(new Event('input'));
   assert.equal(element('#review-trade').disabled, false);
+  assert.equal(element('#trade-slippage-note').hidden, true);
   const minimum=element('#minimum-received').textContent;
   assert.match(minimum, /^2\.436[0-9]+ USDT0$/);
   element('#review-trade').onclick();
@@ -318,6 +325,7 @@ test('Swap and Bridge require a valid custom recipient and record the reviewed a
   const recipient=`0x${'a'.repeat(40)}`;
   for (const hash of ['#swap', '#swap/bridge']) {
     const { element, storage, balances, advance } = openSwap(hash);
+    assert.match(element('#main').innerHTML, /<option value="own">My wallet<\/option><option value="external">Another wallet<\/option>/);
     const picker=element('#trade-recipient-mode');
     const input=element('#trade-recipient');
     assert.equal(element('#trade-recipient-address').hidden, true);

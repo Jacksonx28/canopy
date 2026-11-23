@@ -691,10 +691,17 @@ function comingSoon(){
 function rewards(){
   const claimable=state.rewards>0;
   const alreadyClaimed=state.activity.some(entry=>entry?.type==='Claim');
-  return heading('Rewards','Claim demo ZRO and review your past claims.')+`
+  return heading('Rewards','Staking rewards and Canopy Points.')+`
+    <section class="card rewards-points" aria-labelledby="rewards-points-title">
+      <span class="rewards-points-mark">${CanopyUI.graphic('<path d="M12 2.5c.7 5.8 3.7 8.8 9.5 9.5-5.8.7-8.8 3.7-9.5 9.5-.7-5.8-3.7-8.8-9.5-9.5 5.8-.7 8.8-3.7 9.5-9.5Z"/>')}</span>
+      <div class="rewards-points-copy">
+        <div class="card-top"><h2 id="rewards-points-title">Canopy Points</h2><span class="tag">Coming soon</span></div>
+        <p>Details on earning and using points will be announced at launch.</p>
+      </div>
+    </section>
     <div class="rewards-layout">
       <section class="card rewards-claim" aria-labelledby="rewards-claim-title">
-        <div class="card-top"><h2 id="rewards-claim-title">Claimable rewards</h2><span class="tag">Demo Mode</span></div>
+        <div class="card-top"><h2 id="rewards-claim-title">Staking rewards</h2><span class="tag">Demo Mode</span></div>
         <div class="rewards-balance">${CanopyUI.token('ZRO')}<strong>${num(state.rewards)} <span>ZRO</span></strong></div>
         <p class="form-note">${claimable?'Claiming adds this sample ZRO to your demo portfolio.':alreadyClaimed?'You already claimed your demo rewards. See the receipt in your claim history.':'You have no demo rewards available to claim.'}</p>
         ${claimable?'<button class="primary" type="button" data-action="claim">Claim demo rewards</button>':'<button class="secondary" type="button" data-action="reset-demo">Reset demo…</button>'}

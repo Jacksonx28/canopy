@@ -282,3 +282,9 @@ html:not(.welcome-open) #main{visibility:visible}
 @media(max-width:360px){.network-row,.activity-filters{grid-template-columns:1fr}}
 
 @media(max-width:720px){#swap-chart-panel{display:none}}
+
+.rewards-points{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:14px;padding:clamp(18px,3vw,28px);margin-bottom:20px}
+.rewards-points-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;background:color-mix(in srgb,var(--lime) 11%,var(--panel));color:var(--lime)}
+.rewards-points-mark .ui-icon{width:21px;height:21px}
+.rewards-points-copy .card-top{flex-wrap:wrap;gap:6px 12px}
+.rewards-points-copy p{margin:7px 0 0;color:var(--muted);font-size:14px;line-height:1.5}

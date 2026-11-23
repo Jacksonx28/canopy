@@ -1,18 +1,12 @@
 /* Market index: themes and controls stay inside this workspace. */
 .markets-workspace{min-width:0}
 .market-page-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:26px}
-.market-page-heading p{margin:6px 0 0;color:var(--muted);font-size:14px}
 .market-chart-source{display:inline-flex;align-items:center;gap:7px;flex:none;color:var(--muted);font-size:12px}
-.market-chart-source .ui-icon{width:16px;height:16px;color:var(--lime)}
 .market-directory{scroll-margin-top:95px;min-width:0}
 .market-directory-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px 12px}
 .market-directory-heading>div{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 10px;min-width:0}
 .market-directory-heading h2{margin:0;font-size:19px;letter-spacing:-.035em}
 #market-index-count{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
-.market-watch-filter{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:6px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);font-size:13px;white-space:nowrap}
-.market-watch-filter[aria-pressed=true]{background:color-mix(in srgb,var(--lime) 8%,var(--panel));color:var(--lime);border-color:color-mix(in srgb,var(--lime) 28%,var(--line))}
-.market-watch-filter .watchlist-star{width:16px;height:16px;stroke:currentColor;stroke-width:1.55;fill:none}
-.market-watch-filter[aria-pressed=true] .watchlist-star{fill:color-mix(in srgb,currentColor 23%,transparent)}
 .market-directory-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:0 20px 14px}
 .market-category-buttons{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-width:0}
 .market-category-buttons button{min-height:36px;flex:none;padding:6px 11px;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);font-size:13px;font-weight:550}
@@ -29,25 +23,16 @@
 .market-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .market-index-table{table-layout:fixed;border-collapse:collapse;border-top:1px solid var(--line);text-align:start;white-space:normal}
 .market-index-table .mi-col-pin{width:55px}
-.market-index-table .mi-col-kind{width:17%}
 .market-index-table .mi-col-price{width:18%}
-.market-index-table .mi-col-change{width:16%}
 .market-index-table .mi-col-open{width:42px}
 .market-index-table thead th{padding:11px 10px;background:color-mix(in srgb,var(--panel2) 55%,var(--panel));text-align:start;font-size:11px;font-weight:550}
 .market-index-table tbody th,.market-index-table tbody td{padding:6px 10px;vertical-align:middle;text-align:start}
 .market-index-table .market-index-pin{padding-inline:12px 0}
 .market-index-pin .pin{min-width:32px;min-height:35px}
-.market-index-table .market-index-price,.market-index-table .market-index-change{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
 .market-index-table .market-index-open{text-align:center;padding:5px;color:var(--muted)}
 .market-index-open .ui-icon{width:15px;height:15px}
 .market-index-table tbody tr[data-market-row]{cursor:pointer}
 .market-index-asset{display:block;width:100%;min-width:0;text-align:start;color:var(--text);background:none;padding:5px 0;border-radius:6px}
-.market-index-asset .asset-name{min-width:0;gap:9px}
-.market-index-asset .asset-name b{font-size:14px;overflow-wrap:anywhere}
-.market-index-asset .asset-name small{font-size:11px}
-.market-index-asset .asset-name .coin{width:31px;height:31px}
-.market-index-kind>span{display:inline-block;color:var(--muted);font-size:12px;padding:4px 7px;border-radius:5px;background:var(--panel2)}
-.market-index-table .market-index-mobile-change{display:none}
 .market-index-table .market-index-empty-value{font-variant-numeric:tabular-nums}
 @media(hover:hover){
   .market-index-table tbody tr:hover .market-index-asset b{text-decoration:underline;text-underline-offset:3px}
@@ -61,7 +46,6 @@
 .market-index-empty p{margin:6px 0 13px}
 @media(max-width:720px){
   .market-page-heading{align-items:flex-start;flex-direction:column;gap:10px;margin-bottom:21px}
-  .market-page-heading p{font-size:13px;line-height:1.5}
   .market-directory-heading{padding:14px 12px 9px}
   .market-directory-toolbar{padding:0 12px 12px;gap:9px}
   .market-directory-fields{width:100%}
@@ -71,15 +55,11 @@
   .market-sort-label select{max-width:100%}
   .market-category-buttons{gap:2px}
   .market-category-buttons button{min-height:39px;padding-inline:7px;font-size:12px}
-  .market-index-table colgroup,.market-index-table .market-index-kind,.market-index-table .market-index-change,.market-index-table .market-index-open{display:none}
-  .market-index-table .market-index-mobile-change{display:block;margin-top:2px;font-size:11px;color:var(--muted)}
   .market-index-table thead th:first-child{width:39px}
   .market-index-table thead .market-index-price{width:93px}
   .market-index-table .market-index-pin{padding-inline:4px 0}
   .market-index-table thead th,.market-index-table tbody th,.market-index-table tbody td{padding:6px}
   .market-index-table .market-index-price{padding-inline-end:12px}
-  .market-index-asset .asset-name b{font-size:13px}
-  .market-index-asset .asset-name .coin{width:26px;height:26px}
   .market-index-footer{padding-inline:12px}
 }
 @media(max-width:360px){
@@ -90,3 +70,38 @@
 }
 #main:has(>.markets-workspace){padding-top:15px}
 .market-page-heading{margin-bottom:19px}
+
+.market-index-footer[role=navigation]{justify-content:flex-end;gap:7px;min-height:46px;padding-block:3px}
+.market-index-footer[role=navigation] span{min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+.market-index-footer .market-page-button{display:grid;place-items:center;min-width:44px;min-height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--text)}
+.market-page-button:not(:disabled):hover{background:var(--panel2)}
+.market-page-button:disabled{opacity:.35;cursor:default}
+.market-page-button .ui-icon{width:16px;height:16px}
+.market-index-empty>button{margin-top:10px}
+#market-watchlist{scroll-margin-top:95px}
+
+.market-chart-source{justify-content:flex-end;flex-wrap:wrap;flex:0 1 auto}
+.market-chart-source a{text-decoration:underline;text-underline-offset:2px}
+#market-data-note:empty{display:none}
+.market-index-table .mi-col-trend{width:13%}
+.market-index-table .mi-col-price{width:16%}
+.market-index-table .mi-col-cap,.market-index-table .mi-col-volume{width:15%}
+.market-index-table :is(.market-index-trend,.market-index-volume,.market-index-cap,.market-index-price){text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+.market-index-price>span{display:block;overflow:hidden;text-overflow:ellipsis}
+.market-index-secondary,.market-index-mobile-cap{font-size:11px}
+.market-index-secondary{display:block;margin-top:1px}
+.market-index-mobile-cap{display:none}
+.market-index-table tbody tr:hover .market-index-asset .market-identity b{text-decoration:underline;text-underline-offset:2px}
+@media(max-width:720px){
+  .market-page-heading{flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:7px}
+  .market-index-table colgroup,.market-index-table :is(.market-index-cap,.market-index-volume,.market-index-open){display:none}
+  .market-index-table thead .market-index-trend{width:48px}
+  .market-index-table thead .market-index-price{width:91px}
+  .market-index-mobile-cap{display:block;color:var(--muted);font-size:10px;margin-top:1px}
+  .market-index-table .market-identity .coin{width:22px;height:22px}
+  .market-index-footer[role=navigation]{justify-content:center}
+}
+@media(max-width:360px){
+  .market-category-buttons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
+  .market-category-buttons button{padding-inline:0}
+}

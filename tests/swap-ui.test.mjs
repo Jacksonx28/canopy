@@ -36,6 +36,7 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
         classList: { add() {}, remove() {} },
         before() {},
         focus() {},
+        scrollIntoView() {},
         showModal() { this.open = true; },
         close() { this.open = false; },
         contains() { return true; }
@@ -78,7 +79,7 @@ function openSwap(hash = '#swap', balanceOverrides = {}, activity = [], options 
     addEventListener(type, handler) { (listeners[type] ??= []).push(handler); },
     createElement: () => element('created')
   };
-  const window = { addEventListener() {} };
+  const window = { addEventListener() {}, CanopyMarketData: options.marketFeed };
   const CanopyUI = {
     token: symbol => `<img data-token="${symbol}" alt="">`,
     network: name => `<img data-network="${name}" alt="">`,
@@ -234,13 +235,14 @@ test('Bridge is a ZRO-only tab in the Swap workspace and tracks source and desti
   }
 });
 
-test('the Zero portfolio omits cash controls and discovery cards, while Markets contains the radar', () => {
+test('the Zero portfolio omits cash controls and discovery cards, while Markets contains its watchlist', () => {
   const portfolio = openSwap('#portfolio').element('#main').innerHTML;
   assert.match(portfolio, /Zero · Demo/);
   assert.match(portfolio, /1,000 ZRO/);
   assert.doesNotMatch(portfolio, /On your radar|Market charts|Add funds|Buying power|>Cash</);
   const markets = openSwap('#markets').element('#main').innerHTML;
-  assert.match(markets, /On your radar/);
+  assert.match(markets, /id="market-watchlist"/);
+  assert.doesNotMatch(markets, /data-market-watchlist/);
   assert.match(markets, /data-market-category="stocks"/);
   assert.match(markets, /data-market-category="memes"/);
   assert.match(markets, /data-market-category="indices"/);
@@ -411,8 +413,8 @@ test('Rewards retains an unsaved claim for retry and credits the claim only once
   assert.equal(element('#modal').open, false);
 });
 
-test('the market index filters benchmarks and keeps the saved list in sync', () => {
-  const {element,clickControl}=openSwap('#markets');
+test('the market index filters indices without narrowing the list when starred', () => {
+  const {element,clickControl,storage}=openSwap('#markets');
   clickControl({marketCategory:'indices'});
   assert.equal(element('#market-index-count').textContent,'4 markets');
   assert.match(element('#market-index-results').innerHTML,/data-market-row="BTC\.D"/);
@@ -420,21 +422,47 @@ test('the market index filters benchmarks and keeps the saved list in sync', () 
   element('#search').oninput();
   assert.equal(element('#market-index-count').textContent,'1 market');
   clickControl({pin:'BTC.D'});
-  assert.match(element('#market-overview-watchlist').innerHTML,/BTC\.D/);
-  clickControl({marketWatchlist:''});
-  assert.equal(element('#market-index-count').textContent,'1 market');
+  assert.ok(JSON.parse(storage.get('canopy-zero-watchlist')).includes('BTC.D'));
   clickControl({pin:'BTC.D'});
-  assert.match(element('#market-index-results').innerHTML,/No markets match/);
+  assert.ok(!JSON.parse(storage.get('canopy-zero-watchlist')).includes('BTC.D'));
+  assert.equal(element('#market-index-count').textContent,'1 market');
+  assert.match(element('#market-index-results').innerHTML,/data-market-row="BTC\.D"/);
 });
 
-test('market sorting puts quoted movers first and pagination shows more rows', () => {
+test('market index paginates by ten and search resets to the first page', () => {
   const {element,clickControl}=openSwap('#markets');
   element('#market-sort').value='gainers';
   element('#market-sort').onchange();
   let html=element('#market-index-results').innerHTML;
   assert.equal(/<tr data-market-row="([^"]+)"/.exec(html)[1],'PEPE');
-  assert.equal([...html.matchAll(/<tr data-market-row=/g)].length,12);
-  clickControl({marketMore:''});
+  assert.equal([...html.matchAll(/<tr data-market-row=/g)].length,10);
+  assert.match(html,/data-market-page="-1" aria-label="Previous page" disabled/);
+  clickControl({marketPage:'1'});
   html=element('#market-index-results').innerHTML;
-  assert.equal([...html.matchAll(/<tr data-market-row=/g)].length,24);
+  assert.equal([...html.matchAll(/<tr data-market-row=/g)].length,10);
+  assert.doesNotMatch(html,/data-market-row="PEPE"/);
+  assert.match(html,/Page 2 of 5/);
+  clickControl({marketPage:'-1'});
+  assert.match(element('#market-index-results').innerHTML,/Page 1 of 5/);
+  clickControl({marketPage:'1'});
+  element('#search').value='dogecoin';
+  element('#search').oninput();
+  html=element('#market-index-results').innerHTML;
+  assert.equal([...html.matchAll(/<tr data-market-row=/g)].length,1);
+  assert.match(html,/data-market-row="DOGE"/);
+  assert.doesNotMatch(html,/Market index pagination/);
+});
+
+test('live price history and metrics reach the watchlist and market index', () => {
+  const marketFeed = {
+    state: () => 'ready',
+    load: async () => {},
+    get: symbol => symbol==='ZRO'?{price:1.27,change:6.24,cap:506520000,volume:54230000,history:[1.2,1.24,1.27],source:'CoinGecko'}:null,
+  };
+  const {element}=openSwap('#markets',{},[],{marketFeed});
+  const markets=element('#main').innerHTML;
+  assert.match(markets,/class="market-sparkline" data-direction="up"/);
+  assert.match(markets,/\$54\.23M/);
+  assert.match(markets,/\$506\.52M/);
+  assert.doesNotMatch(markets,/market-benchmark-rail|id="market-watch-filter"/);
 });
